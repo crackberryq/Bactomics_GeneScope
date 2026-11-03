@@ -90,3 +90,8 @@ GFF3 joins use exact CDS `ID`, `protein_id` or `locus_tag`. Multiple matching CD
 Imported InterProScan matches require the same protein identifier, sequence length and MD5 as the normalized input protein. Duplicate identical rows are merged. Signature coordinates must lie within the sequence; mismatches fail explicitly. Unmatched identifiers are counted, and a missing TSV row means assessment coverage is unknown. Signature tracks include families/sites as well as domains. No external analysis is run implicitly.
 
 Protein cards also show amino-acid composition, residue flags and identical-sequence record groups. They do not infer frameshifts, truncation, genomic copy number or biological completeness. See [analysis-tools.md](docs/analysis-tools.md) for implemented tools and remaining analysis stages.
+
+
+## Database Builder
+
+Build user-defined reference packages through Bactologix setup using [DatabaseBuilder.smk](DatabaseBuilder.smk). See [input format and limitations](docs/database-builder.md).
