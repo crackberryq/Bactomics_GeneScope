@@ -2,12 +2,12 @@
 from pathlib import Path
 import yaml
 ROOT = Path(workflow.basedir)
-SPEC = str(Path(config['reference_spec']).resolve())
+SPEC = str(Path(config.get('reference_spec', ROOT / 'database_builder/references/micp-starter.yaml')).resolve())
 OUT = str(Path(config['build_dir']).resolve())
 SCRIPT = str(ROOT / 'database_builder/build.py')
 CODE = [SCRIPT, str(ROOT / 'database_builder/downloads.py')]
 DOCUMENT = yaml.safe_load(Path(SPEC).read_text())
-ASSETS = [str((Path(SPEC).parent / row['path']).resolve()) for group in ('proteins', 'regulatory') for row in DOCUMENT.get(group, []) if 'path' in row]
+ASSETS = sorted({str((Path(SPEC).parent / row['path']).resolve()) for group in ('proteins', 'regulatory') for row in DOCUMENT.get(group, []) if 'path' in row})
 
 rule all:
     input: OUT + '/database/completed.json'

@@ -12,6 +12,23 @@ sys.path.insert(0,str(ROOT/'database_builder'))
 import build as builder
 
 class DatabaseBuilderTests(unittest.TestCase):
+    def test_bundled_starter_builds_offline_with_complete_evidence(self):
+        from unittest.mock import patch
+        spec=ROOT/'database_builder/references/micp-starter.yaml'
+        with tempfile.TemporaryDirectory() as td:
+            r=Path(td)
+            builder.validate(spec,r/'plan.json')
+            with patch.object(builder,'download',side_effect=AssertionError('Bundled build must be offline')):
+                builder.retrieve(r/'plan.json',r/'seq')
+            plan=json.loads((r/'plan.json').read_text())['spec']
+            self.assertEqual(len(builder.fasta(r/'seq/proteins.faa')),164)
+            self.assertEqual(len(plan['annotations']['literature_records']),207)
+            self.assertEqual({x['source_id'] for x in plan['annotations']['literature_records']},{'processes','regulation'})
+            ids={x['id'] for x in plan['annotations']['literature_records']}
+            for protein in plan['proteins']:
+                self.assertTrue(set(protein['references'][1:])<=ids)
+            self.assertEqual((r/'seq/regulatory.fna').read_text(),'')
+
     def fixture(self,root):
         (root/'protein.faa').write_text('>protein\nACDEFGHIKLMNPQRSTVWY\n')
         (root/'dna.fna').write_text('>contig\nACGTACGT\n')

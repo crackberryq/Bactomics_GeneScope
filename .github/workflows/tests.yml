@@ -58,6 +58,11 @@ jobs:
           snakemake -s DatabaseBuilder.smk --cores 1 --config reference_spec=builder-fixture/spec.yaml build_dir=builder-fixture/output
           python database_builder/build.py verify builder-fixture/output/database builder-fixture/verified.json
           snakemake -s DatabaseBuilder.smk --cores 1 --dry-run --config reference_spec=builder-fixture/spec.yaml build_dir=builder-fixture/output
+      - name: Build bundled literature starter without reference downloads
+        run: |
+          snakemake -s DatabaseBuilder.smk --cores 1 --config build_dir=starter-output
+          python database_builder/build.py verify starter-output/database starter-output/verified.json
+          snakemake -s DatabaseBuilder.smk --cores 1 --dry-run --config build_dir=starter-output
   publish:
     needs: [test, browser, database-builder]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
