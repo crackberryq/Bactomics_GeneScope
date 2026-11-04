@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory() as directory:
     base = Path(directory)
     fasta = base / 'test.faa'
     fasta.write_text('>p [gene=ureC] synthetic label fixture\nAVIL\n>q hypothetical protein\nMX\n')
-    (base/'test.gff').write_text('##gff-version 3\nctg\tfixture\tCDS\t10\t21\t.\t+\t0\tID=p;product=synthetic\n')
+    (base/'test.gff').write_text('##gff-version 3\n##sequence-region ctg 1 1000\nctg\tfixture\toperon\t5\t50\t.\t+\t.\tID=op;Name=Example\nctg\tfixture\tCDS\t10\t21\t.\t+\t0\tID=p;product=synthetic\n')
     digest=hashlib.md5(b'AVIL').hexdigest()
     (base/'test.interpro.tsv').write_text(f'p\t{digest}\t4\tFixture\tTEST001\tSynthetic signature\t2\t3\t-\tT\t29-10-2026\n')
     main(['--proteins', str(fasta), '--sample', 'synthetic-demo', '--out', str(base/'out')])
@@ -48,6 +48,19 @@ with tempfile.TemporaryDirectory() as directory:
         page.get_by_text('Genome neighborhood · ctg', exact=True).click()
         assert page.get_by_text('Focal protein: p.', exact=False).is_visible()
         page.get_by_label('Find a gene, protein, function or identifier').fill('')
+        page.get_by_role('button', name='Collapse all').click()
+        page.get_by_role('link', name='Genome explorer', exact=True).click()
+        assert page.locator('#genome-explorer').get_attribute('open') is not None
+        assert '1 supplied operon annotations' in page.locator('#gx-status').inner_text()
+        assert page.locator('#gx-map polygon').count() == 2
+        page.locator('#gx-start').fill('100')
+        page.locator('#gx-go').click()
+        assert page.locator('#gx-map polygon').count() == 0
+        page.locator('#gx-reset').click()
+        page.locator('#gx-map polygon').first.press('Enter')
+        assert page.locator('.protein[data-index="0"]').get_attribute('open') is not None
+        page.get_by_role('link', name='Visual summary', exact=True).click()
+        assert page.locator('#gx-properties circle').count() == 1
         page.get_by_role('button', name='Collapse all').click()
         Path('ui-previews').mkdir(exist_ok=True)
         page.screenshot(path='ui-previews/micp-report-desktop.png', full_page=True)

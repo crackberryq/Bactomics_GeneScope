@@ -8,7 +8,7 @@ from urllib.parse import unquote
 def add_context(proteins, gff=None, interpro=None):
     by_id = {p['protein_id']: p for p in proteins}
     context = {'coordinates': 'not supplied', 'domains': 'not supplied', 'warnings': [],
-               'input_sha256': {}, 'features': []}
+               'input_sha256': {}, 'features': [], 'operons': [], 'sequence_regions': {}}
     copies = defaultdict(list)
     for p in proteins:
         p['domains'] = []
@@ -24,12 +24,17 @@ def add_context(proteins, gff=None, interpro=None):
         for number, line in enumerate(gff.read_text(encoding='utf-8-sig').splitlines(), 1):
             if line.startswith('##FASTA'):
                 break
+            if line.startswith('##sequence-region '):
+                parts = line.split()
+                if len(parts) != 4 or not 1 <= int(parts[2]) <= int(parts[3]):
+                    raise ValueError(f'GFF3 row {number}: invalid sequence-region')
+                context['sequence_regions'][parts[1]] = [int(parts[2]), int(parts[3])]
             if not line or line.startswith('#'):
                 continue
             cols = line.split('\t')
             if len(cols) != 9:
                 raise ValueError(f'GFF3 row {number}: expected nine fields')
-            if cols[2] != 'CDS':
+            if cols[2] not in {'CDS', 'operon'}:
                 continue
             start, end = int(cols[3]), int(cols[4])
             if start < 1 or end < start or cols[6] not in {'+', '-', '.', '?'}:
@@ -44,6 +49,12 @@ def add_context(proteins, gff=None, interpro=None):
                            feature_id=next(iter(attrs.get('ID', [])), f'CDS-row-{number}'),
                            product=next(iter(attrs.get('product', [])), 'CDS'),
                            protein_id=next(iter(candidates)) if len(candidates) == 1 else None)
+            if cols[2] == 'operon':
+                feature['source'] = cols[1]
+                feature['product'] = next(iter(attrs.get('Name', [])), 'Supplied operon annotation')
+                feature['protein_id'] = None
+                context['operons'].append(feature)
+                continue
             features.append(feature)
             if len(candidates) == 1:
                 by_id[feature['protein_id']]['coordinates'].append(feature)
@@ -95,3 +106,4 @@ def neighborhood(protein, context):
     features = [f for f in context.get('features', []) if f['contig'] == focal['contig']]
     index = features.index(focal)
     return features[max(0, index - 2):index + 3]
+

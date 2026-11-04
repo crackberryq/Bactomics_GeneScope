@@ -2,6 +2,7 @@
 import html
 import json
 from .context import neighborhood
+from .explorer import explorer
 
 
 def esc(value):
@@ -167,7 +168,7 @@ def render_report(result):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>''' + esc(application_title) + ''' · ''' + esc(result['sample_id']) + '''</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#173443;background:#eef3f5}*{box-sizing:border-box}
-body{max-width:1320px;margin:auto;padding:28px}header{background:#123c49;color:white;padding:30px;border-radius:16px}
+body{max-width:1600px;margin:auto;padding:28px 28px 28px 250px;overflow-wrap:anywhere}main{min-width:0}.report-sidebar{position:fixed;left:20px;top:24px;width:205px;background:#123c49;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:18px}.report-sidebar a{color:white}.skip-link{position:absolute;top:-100px}.skip-link:focus{top:0}#gx-list{max-height:350px}#genome-explorer .toolbar input{width:140px}meter{width:45%}svg [role=button]{cursor:pointer}svg [role=button]:focus{stroke:#d57b17;stroke-width:3}header{background:#123c49;color:white;padding:30px;border-radius:16px}
 h1{font-size:36px;margin:8px 0}h2{margin-top:32px}.eyebrow{letter-spacing:3px;color:#88e3ca}
 .card{background:white;border:1px solid #ccdce2;border-radius:12px;padding:20px;margin-top:18px}
 .scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:12px;border-bottom:1px solid #dbe5e9;vertical-align:top}th{background:#e4f1ee}
@@ -177,11 +178,11 @@ h1{font-size:36px;margin:8px 0}h2{margin-top:32px}.eyebrow{letter-spacing:3px;co
 select{font:inherit;padding:12px;max-width:100%;border-radius:8px} .count{float:right;color:#526974;font-size:13px;margin-left:12px}.category>summary{padding:3px}.category p{font-size:14px}.subpanel{margin:12px 0;padding:12px;background:#f5f8f9;border-radius:8px}svg{width:100%;height:auto}.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.card>summary{font-size:17px}#overview h2{margin-top:0} .empty-categories{margin-top:18px}
 input{font:inherit;padding:12px;width:100%;border:1px solid #75949d;border-radius:8px}button{font:inherit;padding:9px 16px;margin:10px 8px 0 0;cursor:pointer}
 [hidden]{display:none!important}li{margin:12px 0}p{line-height:1.6}code{overflow-wrap:anywhere}
-@media(max-width:600px){body{padding:12px}.card,header{padding:16px}h1{font-size:28px}}
-@media print{body{padding:0;background:white}input,button{display:none}.scroll{overflow:visible}details{break-inside:avoid}}
-</style></head><body><header><div class="eyebrow">BACTOMICS / GENESCOPE</div><p>''' + esc(application_title) + ''' · ''' + esc(app.get("version", "No application selected")) + '''</p><h1>''' + esc(result['sample_id']) + '''</h1>
+@media(max-width:900px){body{padding:12px}.report-sidebar{position:static;width:auto;flex-direction:row;flex-wrap:wrap}.card,header{padding:16px}h1{font-size:28px}}
+@media print{body{padding:0;background:white}.report-sidebar{display:none}input,button{display:none}.scroll{overflow:visible}details{break-inside:avoid}}
+</style></head><body><a class="skip-link" href="#overview">Skip to report</a><main><header><div class="eyebrow">BACTOMICS / GENESCOPE</div><p>''' + esc(application_title) + ''' · ''' + esc(app.get("version", "No application selected")) + '''</p><h1>''' + esc(result['sample_id']) + '''</h1>
 <p>Gene context, protein properties & application evidence · ''' + esc(version) + '''</p></header>
-<nav aria-label="Report sections"><a href="#overview">Overview</a><a href="#proteins">Genes & proteins</a><a href="#conditions">Temperature & pH</a><a href="#evidence">Evidence</a><a href="#methods">Methods & sources</a></nav>
+<nav class="report-sidebar" aria-label="Report sections"><a href="#overview">Overview</a><a href="#genome-explorer">Genome explorer</a><a href="#visual-summary">Visual summary</a><a href="#proteins">Genes & proteins</a><a href="#conditions">Temperature & pH</a><a href="#evidence">Evidence</a><a href="#methods">Methods & sources</a></nav>
 ''' + assessment_summary(result) + '''
 <section class="card" id="overview"><h2>Overview</h2><div class="stats"><span><b>''' + str(len(proteins)) + '''</b> protein records</span><span><b>''' + str(linked) + '''</b> catalog-linked annotations</span><span><b>''' + str(calculated) + '''</b> calculated descriptors</span></div>
 <p>Explore functional categories below. Names are supplied annotations; operating optima remain undetermined.</p><details><summary>Scope and interpretation</summary><p>''' + esc(result.get('limitations', '')) + '</p>' + table(summary, ['category','annotation_records','interpretation']) + '''</details></section>''' + quality + reference_summary(search_results) + '''
@@ -228,5 +229,5 @@ let printState=[];
 window.addEventListener('beforeprint',()=>{printState=[...document.querySelectorAll('details')].map(d=>[d,d.open]);printState.forEach(([d])=>{if(!d.hidden)d.open=true})});
 window.addEventListener('afterprint',()=>printState.forEach(([d,open])=>d.open=open));
 document.getElementById('print').addEventListener('click',()=>window.print());
-</script></body></html>'''
+</script>''' + explorer(result) + '''</main></body></html>'''
 

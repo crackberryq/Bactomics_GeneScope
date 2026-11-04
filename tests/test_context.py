@@ -51,3 +51,16 @@ class ContextTests(unittest.TestCase):
             self.assertIn('coverage unknown',p['domain_status'])
             path.write_text('c\tt\tCDS\t9\t1\t.\t+\t0\tID=p\n')
             with self.assertRaises(ValueError):add_context([p],gff=path)
+
+
+    def test_supplied_operons_and_declared_bounds(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'sample.gff'
+            path.write_text('##sequence-region c 1 1000\nc\tfixture\toperon\t5\t50\t.\t+\t.\tID=op;Name=Example\nc\tfixture\tCDS\t10\t21\t.\t+\t0\tID=p\n')
+            p = characterize('p', 'p', 'AVIL')
+            context = add_context([p], path)
+            self.assertEqual(context['sequence_regions']['c'], [1, 1000])
+            self.assertEqual(len(context['features']), 1)
+            self.assertEqual(context['operons'][0]['source'], 'fixture')
+            self.assertIsNone(context['operons'][0]['protein_id'])
+            self.assertEqual(len(p['coordinates']), 1)

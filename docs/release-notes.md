@@ -1,3 +1,11 @@
+# GeneScope 0.1.0a12
+
+- Add an offline genome explorer with contig selection, inclusive coordinate windows, strand arrows, keyboard-accessible features and links to protein evidence.
+- Import supplied GFF3 operon annotations and sequence-region bounds. Operons are distinguished from CDS neighborhoods; no new operon prediction or completeness claim is made.
+- Add collapsible annotation-group counts and a theoretical-pI/aliphatic-index scatter plot, with explicit descriptor limitations.
+- Add a responsive report sidebar. Coordinate-free runs show a clear missing-input state; large intervals disclose display limits.
+- Validate GFF imports, escaping, existing reporting, and desktop/mobile browser interactions.
+
 ## GeneScope 0.1.0a11
 
 - Clearly identify descriptor-only runs where no application database search was requested.
