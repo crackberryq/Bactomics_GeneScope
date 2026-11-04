@@ -8,6 +8,7 @@ configfile: "config.yaml"
 ROOT = Path(workflow.basedir)
 SHEET = Path(config["samples"]).resolve()
 OUT = str(Path(config["output_dir"]).resolve())
+DATABASE = config.get("reference_database", "")
 MEMORY = config.get("memory_mb", 2048)
 if isinstance(MEMORY, bool) or not isinstance(MEMORY, int) or MEMORY < 512:
     raise ValueError("memory_mb must be an integer of at least 512")
@@ -38,9 +39,10 @@ rule protein_properties:
     input:
         proteins=lambda w: SAMPLES[w.sample]["proteins"],
         evidence=lambda w: [SAMPLES[w.sample]["evidence"]] if SAMPLES[w.sample]["evidence"] else [],
-        sidecars=lambda w: [str(p) for suffix in (".gff", ".interpro.tsv") if (p := Path(SAMPLES[w.sample]["proteins"]).with_suffix(suffix)).is_file()],
+        sidecars=lambda w: [str(p) for suffix in (".gff", ".interpro.tsv", ".fna") if (p := Path(SAMPLES[w.sample]["proteins"]).with_suffix(suffix)).is_file()],
+        reference=lambda w: [OUT + "/" + w.sample + "/micpscope/reference-search.json"] if DATABASE else [],
         sheet=str(SHEET),
-        code=[str(ROOT / "src/micpscope" / name) for name in ["analysis.py", "cli.py", "knowledge.py", "context.py", "report.py", "data/micp_catalog.json", "__init__.py"]]
+        code=[str(ROOT / "src/micpscope" / name) for name in ["analysis.py", "reference.py", "cli.py", "knowledge.py", "context.py", "report.py", "data/micp_catalog.json", "__init__.py"]]
     output:
         data=OUT + "/{sample}/micpscope/results.json",
         table=OUT + "/{sample}/micpscope/proteins.tsv"
@@ -53,9 +55,10 @@ rule protein_properties:
         mem_mb=MEMORY
     conda: "envs/properties.yml"
     params:
-        script=str(ROOT / "scripts/properties.py"), root=str(ROOT)
+        script=str(ROOT / "scripts/properties.py"), root=str(ROOT),
+        reference=lambda w: "--reference-results " + __import__("shlex").quote(OUT + "/" + w.sample + "/micpscope/reference-search.json") if DATABASE else ""
     shell:
-        "python {params.script:q} {params.root:q} {wildcards.sample:q} {input.proteins:q} {output.data:q} {output.table:q} {input.evidence:q} > {log:q} 2>&1"
+        "python {params.script:q} {params.root:q} {wildcards.sample:q} {input.proteins:q} {output.data:q} {output.table:q} {input.evidence:q} {params.reference} > {log:q} 2>&1"
 
 rule report:
     input:
@@ -76,3 +79,26 @@ rule report:
         script=str(ROOT / "scripts/report.py"), root=str(ROOT)
     shell:
         "python {params.script:q} {params.root:q} {input.data:q} {output:q} > {log:q} 2>&1"
+
+
+if DATABASE:
+    rule reference_search:
+        input:
+            proteins=lambda w: SAMPLES[w.sample]["proteins"],
+            database=[str(Path(DATABASE) / name) for name in ("proteins.dmnd", "proteins.faa", "reference-manifest.json", "checksums.json", "completed.json", "diamond-version.txt")],
+            code=[str(ROOT / "src/micpscope/reference.py"), str(ROOT / "scripts/reference_search.py")]
+        output:
+            data=OUT + "/{sample}/micpscope/reference-search.json",
+            hits=OUT + "/{sample}/micpscope/reference-search.hits.tsv"
+        log: OUT + "/{sample}/micpscope/logs/reference-search.log"
+        benchmark: OUT + "/{sample}/micpscope/benchmarks/reference-search.tsv"
+        threads: config.get("threads", 1)
+        resources: mem_mb=MEMORY
+        conda: "envs/reference-search.yml"
+        params:
+            script=str(ROOT / "scripts/reference_search.py"), root=str(ROOT), database=str(Path(DATABASE).resolve()),
+            expected=("--expected " + __import__("shlex").quote(str(config["reference_database_sha256"]))) if config.get("reference_database_sha256") else "",
+            identity=config.get("reference_min_identity", 30), coverage=config.get("reference_min_coverage", 70),
+            evalue=config.get("reference_max_evalue", 1e-5)
+        shell:
+            "python {params.script:q} {params.root:q} {input.proteins:q} {params.database:q} {output.data:q} --threads {threads} {params.expected} --identity {params.identity:q} --coverage {params.coverage:q} --evalue {params.evalue:q} > {log:q} 2>&1"

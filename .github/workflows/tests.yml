@@ -51,7 +51,7 @@ jobs:
           miniforge-version: latest
           activate-environment: database-builder-ci
           environment-file: envs/database-builder.yml
-      - run: python -m pip install snakemake==9.6.2
+      - run: python -m pip install . snakemake==9.6.2
       - name: Build and verify a synthetic reference with real DIAMOND
         run: |
           python -c "import sys; from pathlib import Path; sys.path.insert(0, 'tests'); from test_database_builder import DatabaseBuilderTests; p=Path('builder-fixture').resolve(); p.mkdir(); DatabaseBuilderTests().fixture(p)"
@@ -63,6 +63,8 @@ jobs:
           snakemake -s DatabaseBuilder.smk --cores 1 --config build_dir=starter-output
           python database_builder/build.py verify starter-output/database starter-output/verified.json
           snakemake -s DatabaseBuilder.smk --cores 1 --dry-run --config build_dir=starter-output
+      - name: Search bundled references and render evidence with real DIAMOND
+        run: python tests/reference_smoke.py
   publish:
     needs: [test, browser, database-builder]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

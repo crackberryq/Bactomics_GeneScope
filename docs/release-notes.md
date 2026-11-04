@@ -1,3 +1,11 @@
+## MICP Scope 0.1.0a8
+
+- Search a completed reference database with a dedicated Snakemake DIAMOND rule and pinned environment.
+- Verify database checksums before and after search; record database identity, search settings, tool version and query hash.
+- Display candidate matches, ambiguity, alignment coverage and linked review evidence in collapsed report sections; retain supplied annotations separately.
+- Export reference scores in TSV. Distinguish no qualifying hits from unsupported inputs.
+- Test the full bundled-database search and report with real DIAMOND in CI.
+
 ## MICP Scope 0.1.0a7
 
 - Bundle the default literature starter with 164 reviewed protein sequences and 207 table entries from the supplied processes and regulation reviews.

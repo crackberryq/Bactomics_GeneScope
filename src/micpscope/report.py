@@ -44,8 +44,44 @@ def protein_context(protein, context):
     return ''.join(parts)
 
 
+def reference_details(protein, search):
+    if not search:
+        return ''
+    hits = protein.get('reference_hits', [])
+    rows, evidence = [], []
+    records = {r['id']: r for r in search.get('literature_records', [])}
+    for hit in hits:
+        ref = search['references'][hit['reference_id']]
+        rows.append(dict(hit, gene=ref.get('gene', ''), protein=ref.get('protein_name', ''),
+                         organism=ref.get('organism', ''), categories=', '.join(ref.get('categories', []))))
+        linked = [records[r] for r in ref.get('references', []) if r in records]
+        for record in linked:
+            evidence.append('<details class="subpanel"><summary>' + esc(ref['id'] + ' · ' + record['id']) +
+                '</summary>' + table(record.get('fields', []), ['heading', 'text']) +
+                '<p>' + esc(record.get('curation_status', '')) + '</p></details>')
+    return ('<details class="subpanel"><summary>Reference similarity · ' +
+            esc(protein.get('reference_search_status', 'unassessed')) + '</summary><p>' +
+            esc(search['interpretation']) + '</p>' + table(rows, ['reference_id', 'gene', 'protein', 'organism',
+            'categories', 'identity', 'query_coverage', 'reference_coverage', 'evalue', 'bitscore']) +
+            ''.join(evidence) + '</details>')
+
+
+def reference_summary(search):
+    if not search:
+        return '<details class="card"><summary>Reference search · not requested</summary><p>No reference database was selected for this run.</p></details>'
+    matched = sum(bool(q['hits']) for q in search['queries'].values())
+    return ('<details class="card" id="reference-search"><summary><strong>Reference search · ' +
+            str(matched) + ' proteins with candidates</strong></summary><p>' + esc(search['interpretation']) +
+            '</p>' + table([search['database']], ['name', 'version', 'checksums_sha256', 'manifest_sha256']) +
+            '<p>Tool: ' + esc(search['tool_version']) + '</p>' + table([search['thresholds']],
+            ['identity', 'query_coverage', 'reference_coverage', 'evalue', 'ambiguity_bitscore_fraction']) +
+            '<details><summary>Database bibliography and provenance</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' +
+            esc(json.dumps(search.get('bibliography', []), indent=2, ensure_ascii=False)) + '</pre></details></details>')
+
+
 def render_report(result):
     proteins = result['proteins']
+    search_results = result.get('reference_search')
     catalog = result.get('knowledge_catalog', {})
     categories = catalog.get('categories', [{'id':'unassigned','name':'Protein properties','description':''}])
     sources = {s['id']:s for s in catalog.get('sources', [])}
@@ -83,7 +119,7 @@ def render_report(result):
                            '<br><b>Activity pH:</b> ' + esc(p.get('ph_indication', 'Undetermined')) + '</p>' +
                            '<p><b>Input annotation:</b> ' + esc(p.get('description', '')) + '<br><b>Quality:</b> ' +
                            esc(p.get('notes') or 'No residue flags; completeness remains unassessed') + '</p>' +
-                           '<p><b>References:</b> ' + (refs or 'No catalog reference assigned') + '</p>' + protein_context(p, context) + '</details>')
+                           '<p><b>References:</b> ' + (refs or 'No catalog reference assigned') + '</p>' + reference_details(p, search_results) + protein_context(p, context) + '</details>')
         section = ('<details class="card category" data-category="' + esc(cat['id']) + '" data-empty="' + ('false' if rows else 'true') + '"><summary><strong>' + esc(cat['name']) + '</strong><span class="count">' + str(len(rows)) + ' records</span></summary><p>' + esc(cat['description']) + '</p>' + (''.join(details) or '<p>No assigned records; this does not establish biological absence.</p>') + '</details>')
         (sections if rows else empty_sections).append(section)
     options = ''.join('<option value="' + esc(c['id']) + '">' + esc(c['name']) + '</option>' for c in categories)
@@ -114,8 +150,8 @@ input{font:inherit;padding:12px;width:100%;border:1px solid #75949d;border-radiu
 <p>Gene context, protein properties & application evidence · ''' + esc(version) + '''</p></header>
 <nav aria-label="Report sections"><a href="#overview">Overview</a><a href="#proteins">Genes & proteins</a><a href="#conditions">Temperature & pH</a><a href="#evidence">Evidence</a><a href="#methods">Methods & sources</a></nav>
 <section class="card" id="overview"><h2>Overview</h2><div class="stats"><span><b>''' + str(len(proteins)) + '''</b> protein records</span><span><b>''' + str(linked) + '''</b> catalog-linked annotations</span><span><b>''' + str(calculated) + '''</b> calculated descriptors</span></div>
-<p>Explore functional categories below. Names are supplied annotations; operating optima remain undetermined.</p><details><summary>Scope and interpretation</summary><p>''' + esc(result.get('limitations', '')) + '</p>' + table(summary, ['category','annotation_records','interpretation']) + '''</details></section>''' + quality + '''
-<section id="proteins"><h2>Genes & proteins</h2><p>Names and functions come from supplied annotation and a cited catalog. These are not sequence-confirmed hits. Expand a record for descriptors, context and references.</p>
+<p>Explore functional categories below. Names are supplied annotations; operating optima remain undetermined.</p><details><summary>Scope and interpretation</summary><p>''' + esc(result.get('limitations', '')) + '</p>' + table(summary, ['category','annotation_records','interpretation']) + '''</details></section>''' + quality + reference_summary(search_results) + '''
+<section id="proteins"><h2>Genes & proteins</h2><p>Names and functions come from supplied annotation and a cited catalog. Database similarity candidates, when searched, are shown separately with their scores and reference evidence. Expand a record for descriptors, context and references.</p>
 <label for="protein-search">Find a gene, protein, function or identifier</label><input id="protein-search" type="search" placeholder="Search annotations…">
 <div class="toolbar"><label for="category-filter">Category</label><select id="category-filter"><option value="">All categories</option>''' + options + '''</select><button type="button" id="expand">Expand visible records</button><button type="button" id="collapse">Collapse all</button><button type="button" id="export">Export filtered TSV</button><button type="button" id="print">Print / Save PDF</button></div>
 <p id="search-status" role="status" aria-live="polite"></p>''' + ''.join(sections) + '<details class="empty-categories" id="empty-categories"><summary>Show unassessed categories (' + str(len(empty_sections)) + ')</summary>' + ''.join(empty_sections) + '''</details></section>
@@ -127,7 +163,7 @@ input{font:inherit;padding:12px;width:100%;border:1px solid #75949d;border-radiu
 <details class="card" id="evidence"><summary><strong>Application evidence</strong></summary><p>Supplied observations are displayed as recorded and have not been independently verified. A literature value is not automatically applicable to this sample.</p>''' + evidence + '''</details>
 <details class="card" id="methods"><summary><strong>Methods & sources</strong></summary>
 <p>Biopython ''' + esc(prov.get('biopython_version', 'unknown')) + ''' ProteinAnalysis calculates mass, theoretical pI, GRAVY, instability and aromaticity. Aliphatic index = 100 × [A + 2.9V + 3.9(I + L)] / sequence length, using residue counts. One terminal stop is removed; unsupported residues are flagged without descriptor calculation.</p>
-<p>Annotation labels are matched conservatively to catalog gene symbols or product phrases. Ambiguous matches stay unresolved. No homology search, pathway-completeness assessment or gene-expression analysis is performed. Generic function annotations are retained even without a catalog match.</p>
+<p>Annotation labels are matched conservatively to catalog gene symbols or product phrases. Ambiguous matches stay unresolved. A selected reference database enables a separate DIAMOND similarity search. No pathway-completeness or gene-expression inference is performed. Generic function annotations are retained even without a catalog match.</p>
 <p>Catalog ''' + esc(catalog.get('catalog_version', 'not recorded')) + ' · ' + esc(catalog.get('scope', '')) + '''</p>
 <p>Coverage gaps: ''' + esc('; '.join(catalog.get('coverage_gaps', []))) + '''.</p><ul>''' + bibliography + '''</ul>
 <p>Input SHA-256: <code>''' + esc(prov['input_sha256']) + '''</code><br>Catalog SHA-256: <code>''' + esc(prov.get('catalog_sha256', 'not recorded')) + '''</code><br>Generated: ''' + esc(prov['created_utc']) + '''</p></details>
@@ -159,3 +195,4 @@ window.addEventListener('beforeprint',()=>{printState=[...document.querySelector
 window.addEventListener('afterprint',()=>printState.forEach(([d,open])=>d.open=open));
 document.getElementById('print').addEventListener('click',()=>window.print());
 </script></body></html>'''
+

@@ -12,6 +12,7 @@ from . import __version__
 from .analysis import characterize, read_fasta
 from .knowledge import load_catalog, enrich
 from .context import add_context
+from .reference import attach
 from .report import render_report, table
 
 LIMITS = ("Sequence descriptors do not establish temperature or pH optima, shelf life, "
@@ -54,6 +55,7 @@ def main(argv=None):
     parser.add_argument("--evidence", type=Path, help="Optional evidence CSV")
     parser.add_argument('--gff', type=Path, help='Optional recorded GFF3 CDS coordinates')
     parser.add_argument('--interpro', type=Path, help='Optional InterProScan TSV signatures')
+    parser.add_argument("--reference-results", type=Path, help="Verified DIAMOND search JSON for this exact protein input")
     parser.add_argument("--out", type=Path, required=True, help="New output directory; existing paths are never overwritten")
     args = parser.parse_args(argv)
     try:
@@ -65,7 +67,7 @@ def main(argv=None):
         interpro = args.interpro or (args.proteins.with_suffix('.interpro.tsv') if args.proteins.with_suffix('.interpro.tsv').is_file() else None)
         context = add_context(proteins, gff, interpro)
         evidence = read_evidence(args.evidence, args.sample)
-        result = dict(schema_version="1.2", software_version=__version__, sample_id=args.sample,
+        result = dict(schema_version="1.3", software_version=__version__, sample_id=args.sample,
                       context=context,
                       proteins=proteins, evidence=evidence, operating_conditions="undetermined",
                       knowledge_catalog=catalog,
@@ -75,8 +77,14 @@ def main(argv=None):
                           evidence_sha256=hashlib.sha256(args.evidence.read_bytes()).hexdigest() if args.evidence else None,
                           created_utc=datetime.now(timezone.utc).isoformat(),
                           python_version=platform.python_version(), biopython_version=Bio.__version__))
+        if args.reference_results:
+            result["reference_search"] = attach(proteins, args.reference_results, result["provenance"]["input_sha256"])
+        assembly = args.proteins.with_suffix(".fna")
+        if assembly.is_file():
+            result["provenance"]["assembly_sha256"] = hashlib.sha256(assembly.read_bytes()).hexdigest()
         report = None if args.data_only else render(result)
         columns = ["protein_id", "gene_name", "protein_name", "function", "category", "annotation_status", "annotation_basis", "literature_scope", "description", "length", "status", "aliphatic_index", "theoretical_pi", "gravy", "instability_index", "molecular_weight_da", "aromaticity", "sequence_sha256", "evidence_type", "completeness", "instability_class", "hydropathy_class", "temperature_indication", "ph_indication", "references", "notes"]
+        columns += ["reference_search_status", "best_reference", "reference_identity", "reference_query_coverage", "reference_reference_coverage", "reference_evalue", "reference_bitscore", "reference_database_version"]
         buffer = io.StringIO(newline="")
         writer = csv.DictWriter(buffer, fieldnames=columns, extrasaction="ignore", delimiter="\t")
         writer.writeheader()
@@ -95,3 +103,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
+

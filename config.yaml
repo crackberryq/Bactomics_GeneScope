@@ -3,3 +3,10 @@ samples: examples/samples.tsv
 output_dir: results
 threads: 1
 memory_mb: 2048
+
+# Optional completed Database Builder output folder. Blank skips similarity search.
+reference_database: ""
+# Search filters, not validated functional thresholds; coverage applies to query and reference.
+reference_min_identity: 30
+reference_min_coverage: 70
+reference_max_evalue: 0.00001
