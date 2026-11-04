@@ -57,6 +57,9 @@ with tempfile.TemporaryDirectory() as directory:
         page.locator('#gx-go').click()
         assert page.locator('#gx-map polygon').count() == 0
         page.locator('#gx-reset').click()
+        page.locator('#gx-find').fill('p')
+        page.locator('#gx-locate').click()
+        assert 'Located p' in page.locator('#gx-selection').inner_text()
         page.locator('#gx-map polygon').first.press('Enter')
         assert page.locator('.protein[data-index="0"]').get_attribute('open') is not None
         page.get_by_role('link', name='Visual summary', exact=True).click()

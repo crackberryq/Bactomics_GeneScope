@@ -1,3 +1,8 @@
+# GeneScope 0.1.0a13
+
+- Add exact identifier lookup to center the genome explorer on a gene and its flanking region. Ambiguous multi-segment matches remain explicit.
+- Clarify strand/color legends and add numeric axes to the descriptor plot.
+
 # GeneScope 0.1.0a12
 
 - Add an offline genome explorer with contig selection, inclusive coordinate windows, strand arrows, keyboard-accessible features and links to protein evidence.
