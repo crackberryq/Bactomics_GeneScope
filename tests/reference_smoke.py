@@ -21,6 +21,6 @@ subprocess.run(cmd,check=True,cwd=root)
 data=json.loads((work/'results/smoke/micpscope/results.json').read_text())
 hits=data['proteins'][0]['reference_hits']
 assert any(h['reference_id']==first[0] and h['identity']==100 for h in hits),hits
-assert data['reference_search']['database']['version']==manifest['specification']['version']
+assert data['reference_search']['database']['version']==manifest['specification']['application']['version']
 assert 'Reference search · 1 proteins with candidates' in (work/'results/smoke/micpscope/report.html').read_text()
 subprocess.run(cmd+['--dry-run'],check=True,cwd=root)

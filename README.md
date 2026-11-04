@@ -1,6 +1,6 @@
-# Bactomics MICP Scope
+# GeneScope
 
-**0.1.0a5 — MICP Scope alpha.** Protein characterization and traceable application evidence for MICP research, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
+**0.1.0a9 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
 
 ## Available now
 
@@ -14,11 +14,11 @@
 
 ## Run through Bactologix
 
-Select MICP Scope in **Install & update**, install the named `micpscope-v0.1.0a5` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a MICP Scope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
+Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a9` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
 
 ## Snakemake structure
 
-- `MICPscope.smk`: native DAG, separate properties and report rules.
+- `GeneScope.smk`: native DAG, separate properties and report rules.
 - `environment.yml`: Python 3.11 / Snakemake 9.6.2 runner.
 - `envs/properties.yml`: rule-local Python / Biopython environment and post-deploy check.
 - `config.yaml` and `examples/samples.tsv`: configuration and batch inputs.
@@ -28,9 +28,9 @@ Select MICP Scope in **Install & update**, install the named `micpscope-v0.1.0a5
 For standalone development, create the Conda runner from `environment.yml`, then use:
 
 ```bash
-snakemake --snakefile MICPscope.smk --cores 1 --use-conda --dry-run
-snakemake --snakefile MICPscope.smk --cores 1 --use-conda --conda-create-envs-only
-snakemake --snakefile MICPscope.smk --cores 1 --use-conda
+snakemake --snakefile GeneScope.smk --cores 1 --use-conda --dry-run
+snakemake --snakefile GeneScope.smk --cores 1 --use-conda --conda-create-envs-only
+snakemake --snakefile GeneScope.smk --cores 1 --use-conda
 ```
 
 The default configuration runs synthetic fixtures only. Sample-sheet paths resolve relative to the workflow working directory; absolute paths are recommended. Supply annotated protein FASTA, not genome DNA. The previous `micpscope` Python CLI remains available for developer use. Snakemake manages resumability and reruns; the standalone CLI still refuses existing output directories.
@@ -71,7 +71,7 @@ No license has yet been selected by the repository owner.
 
 ## Literature catalog and annotation
 
-The packaged [`micp_catalog.json`](src/micpscope/data/micp_catalog.json) contains 20 starter entries across six biological categories, references, taxonomic scope, evidence levels, descriptor rules and coverage gaps. It is a focused review, **not an exhaustive MICP gene inventory**. The full catalog and its SHA-256 are embedded in each new JSON result.
+The bundled MICP application specification carries its annotation catalog and literature evidence. GeneScope only loads application-specific interpretation from the selected database; an analysis without a database provides generic protein descriptors. See [application packages](docs/application-packages.md).
 
 Annotation uses supplied FASTA headers: explicit `gene=` / UniProt `GN=` symbols, standalone known symbols, or specific product phrases. For example, `>locus_1 [gene=ureC] urease subunit alpha` can link to the urease category. This does not validate function from sequence. Conflicting matches remain unresolved; missing labels are not biological absence. Plain locus-only FASTA cannot provide gene names. Generic product descriptions remain visible even without a catalog match.
 

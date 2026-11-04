@@ -1,11 +1,14 @@
-"""MICP Scope Database Builder: sample-free, user-defined reference builds."""
+"""GeneScope Database Builder: sample-free, user-defined reference builds."""
 from pathlib import Path
 import yaml
+import sys
 ROOT = Path(workflow.basedir)
 SPEC = str(Path(config.get('reference_spec', ROOT / 'database_builder/references/micp-starter.yaml')).resolve())
 OUT = str(Path(config['build_dir']).resolve())
+sys.path.insert(0, str(ROOT / 'src'))
+from micpscope.application import archive_name
 SCRIPT = str(ROOT / 'database_builder/build.py')
-CODE = [SCRIPT, str(ROOT / 'database_builder/downloads.py')]
+CODE = [SCRIPT, str(ROOT / 'database_builder/downloads.py'), str(ROOT / 'src/micpscope/application.py')]
 DOCUMENT = yaml.safe_load(Path(SPEC).read_text())
 ASSETS = sorted({str((Path(SPEC).parent / row['path']).resolve()) for group in ('proteins', 'regulatory') for row in DOCUMENT.get(group, []) if 'path' in row})
 
@@ -40,7 +43,7 @@ rule index_proteins:
 
 rule package_database:
     input: plan=rules.validate_references.output, sequences=rules.retrieve_references.output, index=rules.index_proteins.output.index, version=rules.index_proteins.output.version, code=CODE
-    output: checksums=OUT + '/database/checksums.json', archive=OUT + '/database/database.zip'
+    output: checksums=OUT + '/database/checksums.json', archive=OUT + '/database/' + archive_name(DOCUMENT), legacy=OUT + '/database/database.zip'
     log: OUT + '/logs/package.log'
     benchmark: OUT + '/benchmarks/package.tsv'
     conda: 'envs/database-builder.yml'

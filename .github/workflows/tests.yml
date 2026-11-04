@@ -81,11 +81,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-          tag="micpscope-v${version}"
+          tag="genescope-v${version}"
           if gh release view "$tag" >/dev/null 2>&1; then
             git fetch origin "refs/tags/$tag:refs/tags/$tag"
             test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA"
           else
-            gh release create "$tag" --target "$GITHUB_SHA" --title "MICP Scope ${version}" --prerelease --notes-file docs/release-notes.md src/micpscope/data/micp_catalog.json
+            gh release create "$tag" --target "$GITHUB_SHA" --title "GeneScope ${version}" --prerelease --notes-file docs/release-notes.md src/micpscope/data/micp_catalog.json
           fi
 

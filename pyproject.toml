@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bactomics-micpscope"
-version = "0.1.0a8"
-description = "Protein characterization and traceable MICP application evidence"
+version = "0.1.0a9"
+description = "GeneScope application-driven genome and protein evidence"
 requires-python = ">=3.10"
 dependencies = ["biopython==1.86"]
 
 [project.scripts]
-micpscope = "micpscope.cli:main"
+genescope = "micpscope.cli:main"
+micpscope = "micpscope.cli:legacy_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

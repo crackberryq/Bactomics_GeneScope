@@ -16,7 +16,7 @@ from .reference import attach
 from .report import render_report, table
 
 LIMITS = ("Sequence descriptors do not establish temperature or pH optima, shelf life, "
-          "mineralization activity, material performance, or deployment safety. "
+          "biological activity, material performance, or deployment safety. "
           "Protein completeness is unassessed. Header-derived functional associations are not sequence-confirmed. "
           "Evidence entries are user-supplied and are not independently verified.")
 EVIDENCE_FIELDS = ["sample_id", "subject_id", "evidence_type", "property", "value", "unit", "source", "notes"]
@@ -46,8 +46,8 @@ def render(result):
     return render_report(result)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="MICP Scope protein characterization and evidence report")
+def main(argv=None, legacy=False):
+    parser = argparse.ArgumentParser(description="GeneScope protein characterization and evidence report")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--proteins", type=Path, required=True, help="Annotated protein FASTA (.faa), not genome DNA")
     parser.add_argument("--data-only", action="store_true", help="Write analysis data for the Snakemake report stage")
@@ -61,14 +61,24 @@ def main(argv=None):
     try:
         raw = args.proteins.read_bytes()
         proteins = [characterize(*record) for record in read_fasta(raw.decode("utf-8-sig"))]
-        catalog, catalog_sha256 = load_catalog()
+        app = None
+        if args.reference_results:
+            search_data = json.loads(args.reference_results.read_text())
+            app = search_data.get('application')
+            catalog = search_data.get('knowledge_catalog', {'entries': [], 'categories': [{'id':'unassigned','name':'Unassigned proteins','description':''}], 'sources': []})
+            catalog_sha256 = hashlib.sha256(json.dumps(catalog, sort_keys=True).encode()).hexdigest()
+        elif legacy:
+            catalog, catalog_sha256 = load_catalog()
+        else:
+            catalog = {'entries': [], 'categories': [{'id':'unassigned','name':'Unassigned proteins','description':'Select an application database for functional interpretation'}], 'sources': []}
+            catalog_sha256 = None
         enrich(proteins, catalog)
         gff = args.gff or (args.proteins.with_suffix('.gff') if args.proteins.with_suffix('.gff').is_file() else None)
         interpro = args.interpro or (args.proteins.with_suffix('.interpro.tsv') if args.proteins.with_suffix('.interpro.tsv').is_file() else None)
         context = add_context(proteins, gff, interpro)
         evidence = read_evidence(args.evidence, args.sample)
         result = dict(schema_version="1.3", software_version=__version__, sample_id=args.sample,
-                      context=context,
+                      context=context, application=app,
                       proteins=proteins, evidence=evidence, operating_conditions="undetermined",
                       knowledge_catalog=catalog,
                       limitations=LIMITS, provenance=dict(
@@ -97,8 +107,12 @@ def main(argv=None):
         if report is not None:
             (args.out / "report.html").write_text(report, encoding="utf-8")
     except (OSError, ValueError) as error:
-        parser.exit(2, f"MICP Scope: {error}\n")
+        parser.exit(2, f"GeneScope: {error}\n")
     print(f"Outputs: {args.out}")
+
+
+def legacy_main(argv=None):
+    return main(argv, legacy=True)
 
 
 if __name__ == "__main__":

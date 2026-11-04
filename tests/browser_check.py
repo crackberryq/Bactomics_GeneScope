@@ -4,7 +4,7 @@ import tempfile
 import hashlib
 
 from playwright.sync_api import sync_playwright
-from micpscope.cli import main
+from micpscope.cli import legacy_main as main
 
 with tempfile.TemporaryDirectory() as directory:
     base = Path(directory)
@@ -56,3 +56,4 @@ with tempfile.TemporaryDirectory() as directory:
         page.screenshot(path='ui-previews/micp-report-mobile.png', full_page=True)
         assert not errors, errors
         browser.close()
+

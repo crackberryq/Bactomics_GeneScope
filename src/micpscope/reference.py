@@ -1,4 +1,5 @@
 """Traceable protein similarity search; reference associations are not activity calls."""
+from .application import application, catalog
 import hashlib
 import json
 import math
@@ -35,6 +36,7 @@ def verify_database(folder, expected=None):
     manifest = json.loads((folder / 'reference-manifest.json').read_text())
     if manifest.get('schema_version') != '1.0':
         raise ValueError('Unsupported reference database schema')
+    application(manifest['specification'])
     return manifest, identity
 
 
@@ -102,7 +104,8 @@ def search(proteins, database, output, threads=1, expected=None,
     annotations = spec.get('annotations', {})
     literature = annotations.get('literature_records', []) if isinstance(annotations, dict) else []
     result = dict(schema_version='1.0', input_sha256=input_hash, queries=queries,
-        database=dict(name=spec['name'], version=spec['version'], checksums_sha256=db_hash,
+        application=application(spec), knowledge_catalog=catalog(spec),
+        database=dict(**application(spec), checksums_sha256=db_hash,
                       manifest_sha256=digest(Path(database) / 'reference-manifest.json')),
         tool_version=version, command=command, thresholds=dict(identity=identity, query_coverage=coverage,
         reference_coverage=coverage, evalue=evalue, ambiguity_bitscore_fraction=.95),
@@ -129,5 +132,12 @@ def attach(proteins, path, input_sha256):
             protein['best_reference'] = hit['reference_id']
             for key in ('identity', 'query_coverage', 'reference_coverage', 'evalue', 'bitscore'):
                 protein['reference_' + key] = hit[key]
+        if row['status'] == 'reference_candidate' and protein.get('category') == 'unassigned':
+            ref = result['references'][row['hits'][0]['reference_id']]
+            categories = {c['id'] for c in result.get('knowledge_catalog', {}).get('categories', [])}
+            matched = [c for c in ref.get('categories', []) if c in categories]
+            if matched:
+                protein['category'] = matched[0]
+                protein['category_basis'] = 'Reference similarity candidate; function is not experimentally established'
         protein['reference_database_version'] = result['database']['version']
     return result

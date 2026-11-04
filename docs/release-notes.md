@@ -1,3 +1,11 @@
+## GeneScope 0.1.0a9
+
+- Separate the reusable GeneScope engine from the bundled MICP application package.
+- Add application schema 2.0 with id, display name, version and description; derive package filenames, report titles and database provenance from this metadata.
+- Read interpretation and category definitions from the selected package. Generic runs no longer receive implicit MICP annotations.
+- Preserve schema 1.0 databases, historical paths and MICPscope.smk through compatibility interfaces; add GeneScope.smk and genescope CLI.
+- Validate custom applications, named archives, legacy builds and escaped report labels.
+
 ## MICP Scope 0.1.0a8
 
 - Search a completed reference database with a dedicated Snakemake DIAMOND rule and pinned environment.

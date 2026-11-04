@@ -11,7 +11,7 @@ from micpscope.cli import main
 
 def fixture(root):
     db = root / 'db'; db.mkdir()
-    spec = dict(name='synthetic', version='test', proteins=[
+    spec = dict(schema_version='1.0', name='synthetic', version='test', proteins=[
         dict(id='p1', gene='one', protein_name='<candidate>', references=['paper']),
         dict(id='p2', gene='two', protein_name='alternative', references=[])],
         annotations={'literature_records':[dict(id='paper', fields=[dict(heading='Function',text='<script>')])]},

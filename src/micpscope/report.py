@@ -72,7 +72,7 @@ def reference_summary(search):
     matched = sum(bool(q['hits']) for q in search['queries'].values())
     return ('<details class="card" id="reference-search"><summary><strong>Reference search · ' +
             str(matched) + ' proteins with candidates</strong></summary><p>' + esc(search['interpretation']) +
-            '</p>' + table([search['database']], ['name', 'version', 'checksums_sha256', 'manifest_sha256']) +
+            '</p>' + table([search['database']], ['name', 'version', 'description', 'checksums_sha256', 'manifest_sha256']) +
             '<p>Tool: ' + esc(search['tool_version']) + '</p>' + table([search['thresholds']],
             ['identity', 'query_coverage', 'reference_coverage', 'evalue', 'ambiguity_bitscore_fraction']) +
             '<details><summary>Database bibliography and provenance</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' +
@@ -80,6 +80,8 @@ def reference_summary(search):
 
 
 def render_report(result):
+    app = result.get('application') or {}
+    application_title = 'GeneScope' + (' — ' + str(app['name']) if app.get('name') else '')
     proteins = result['proteins']
     search_results = result.get('reference_search')
     catalog = result.get('knowledge_catalog', {})
@@ -98,7 +100,7 @@ def render_report(result):
     for cat in categories:
         rows = [p for p in proteins if p.get('category', 'unassigned') == cat['id']]
         summary.append(dict(category=cat['name'], annotation_records=len(rows),
-                            interpretation='Header-derived associations' if rows else 'No assigned annotation; not an absence claim'))
+                            interpretation='Supplied or reference-associated groups; inspect record evidence' if rows else 'No assigned annotation; not an absence claim'))
         details = []
         for p in rows:
             refs = ' · '.join('<a href="' + esc(sources[r]['url']) + '">' + esc(r) + '</a>'
@@ -131,7 +133,7 @@ def render_report(result):
     prov = result['provenance']
     version = result.get('software_version', 'unknown')
     return '''<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>MICP Scope · ''' + esc(result['sample_id']) + '''</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>''' + esc(application_title) + ''' · ''' + esc(result['sample_id']) + '''</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#173443;background:#eef3f5}*{box-sizing:border-box}
 body{max-width:1320px;margin:auto;padding:28px}header{background:#123c49;color:white;padding:30px;border-radius:16px}
@@ -146,7 +148,7 @@ input{font:inherit;padding:12px;width:100%;border:1px solid #75949d;border-radiu
 [hidden]{display:none!important}li{margin:12px 0}p{line-height:1.6}code{overflow-wrap:anywhere}
 @media(max-width:600px){body{padding:12px}.card,header{padding:16px}h1{font-size:28px}}
 @media print{body{padding:0;background:white}input,button{display:none}.scroll{overflow:visible}details{break-inside:avoid}}
-</style></head><body><header><div class="eyebrow">BACTOMICS / MICP SCOPE</div><h1>''' + esc(result['sample_id']) + '''</h1>
+</style></head><body><header><div class="eyebrow">BACTOMICS / GENESCOPE</div><p>''' + esc(application_title) + ''' · ''' + esc(app.get("version", "No application selected")) + '''</p><h1>''' + esc(result['sample_id']) + '''</h1>
 <p>Gene context, protein properties & application evidence · ''' + esc(version) + '''</p></header>
 <nav aria-label="Report sections"><a href="#overview">Overview</a><a href="#proteins">Genes & proteins</a><a href="#conditions">Temperature & pH</a><a href="#evidence">Evidence</a><a href="#methods">Methods & sources</a></nav>
 <section class="card" id="overview"><h2>Overview</h2><div class="stats"><span><b>''' + str(len(proteins)) + '''</b> protein records</span><span><b>''' + str(linked) + '''</b> catalog-linked annotations</span><span><b>''' + str(calculated) + '''</b> calculated descriptors</span></div>

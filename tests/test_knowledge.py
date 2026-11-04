@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from micpscope.analysis import characterize
-from micpscope.cli import main
+from micpscope.cli import legacy_main as main
 from micpscope.knowledge import annotation_context, enrich, interpret_descriptors, load_catalog
 
 
@@ -72,3 +72,4 @@ class KnowledgeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

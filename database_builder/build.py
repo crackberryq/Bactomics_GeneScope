@@ -1,4 +1,7 @@
 """Validated, staged reference builds. Does not infer biological claims."""
+import sys
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "src"))
+from micpscope.application import application, archive_name, catalog
 import argparse
 import hashlib
 import json
@@ -38,11 +41,11 @@ def fasta(path):
 def validate(spec_path, output):
     spec_path = Path(spec_path).resolve()
     s = yaml.safe_load(spec_path.read_text())
-    if not isinstance(s, dict) or s.get('schema_version') != '1.0':
-        raise ValueError('Reference specification requires schema_version: "1.0"')
-    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,79}', s.get('name','')) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,79}', s.get('version','')):
-        raise ValueError('Name and version must be safe nonempty identifiers')
-    if set(s) - {'schema_version','name','version','proteins','regulatory','annotations','modules','references'}:
+    if not isinstance(s, dict):
+        raise ValueError('Reference specification must be a mapping')
+    application(s)
+    catalog(s)
+    if set(s) - {'schema_version','application','name','version','proteins','regulatory','annotations','modules','references'}:
         raise ValueError('Unknown specification fields')
     rows = s.get('proteins', [])
     if not isinstance(rows, list) or not rows:
@@ -116,11 +119,14 @@ def package(plan_path, seqdir, index, output):
     version=Path(index).with_suffix('.version.txt')
     shutil.copyfile(version,out/'diamond-version.txt')
     write(out/'reference-manifest.json',{'schema_version':'1.0','builder_version':'0.1.0','specification':plan['spec'],'input_sha256':plan['input_sha256'],'spec_sha256':plan['spec_sha256'],'coordinate_system':plan['coordinate_system'],'scientific_validation':'User-supplied evidence; build completion is not biological validation'})
-    hashes={p.name:sha(p.read_bytes()) for p in out.iterdir() if p.is_file() and p.name not in {'checksums.json','completed.json','database.zip'}}
+    archive=archive_name(plan['spec'])
+    hashes={p.name:sha(p.read_bytes()) for p in out.iterdir() if p.is_file() and p.name not in {'checksums.json','completed.json','database.zip',archive}}
     write(out/'checksums.json',hashes)
-    with zipfile.ZipFile(out/'database.zip','w',zipfile.ZIP_DEFLATED) as z:
+    with zipfile.ZipFile(out/archive,'w',zipfile.ZIP_DEFLATED) as z:
         for name in sorted([*hashes,'checksums.json']):
             z.write(out/name,name)
+    # Compatibility alias for older Bactologix installations.
+    shutil.copyfile(out/archive,out/'database.zip')
 
 
 def verify(root, receipt):
@@ -129,12 +135,16 @@ def verify(root, receipt):
         if Path(name).name!=name or sha((root/name).read_bytes())!=digest: raise ValueError('Database checksum mismatch')
     for name in ('proteins.faa','proteins.dmnd','reference-manifest.json','diamond-version.txt'):
         if name not in hashes or (root/name).stat().st_size==0: raise ValueError('Incomplete database')
-    with zipfile.ZipFile(root/'database.zip') as z:
+    spec=json.loads((root/'reference-manifest.json').read_text())['specification']
+    application(spec)
+    archive=root/archive_name(spec)
+    if not archive.is_file() and spec.get('schema_version')=='1.0': archive=root/'database.zip'
+    with zipfile.ZipFile(archive) as z:
         if set(z.namelist()) != set(hashes)|{'checksums.json'}: raise ValueError('Package file set mismatch')
         for name,digest in hashes.items():
             if sha(z.read(name))!=digest: raise ValueError('Package checksum mismatch')
         if z.read('checksums.json')!=(root/'checksums.json').read_bytes(): raise ValueError('Package manifest mismatch')
-    write(receipt,{'status':'completed','schema_version':'1.0','checksums_sha256':sha((root/'checksums.json').read_bytes()),'archive_sha256':sha((root/'database.zip').read_bytes())})
+    write(receipt,{'status':'completed','schema_version':'1.0','checksums_sha256':sha((root/'checksums.json').read_bytes()),'archive_sha256':sha(archive.read_bytes()),'archive_name':archive.name,'application':application(spec)})
 
 
 if __name__=='__main__':
