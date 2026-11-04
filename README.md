@@ -1,6 +1,8 @@
 # GeneScope
 
-**0.1.0a9 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
+Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crackberryq/Bactomics_GeneScope).
+
+**0.1.0a10 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
 
 ## Available now
 
@@ -14,7 +16,7 @@
 
 ## Run through Bactologix
 
-Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a9` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
+Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a10` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
 
 ## Snakemake structure
 

@@ -4,10 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bactomics-micpscope"
-version = "0.1.0a9"
+version = "0.1.0a10"
 description = "GeneScope application-driven genome and protein evidence"
 requires-python = ">=3.10"
 dependencies = ["biopython==1.86"]
+
+[project.urls]
+Repository = "https://github.com/crackberryq/Bactomics_GeneScope"
+Issues = "https://github.com/crackberryq/Bactomics_GeneScope/issues"
 
 [project.scripts]
 genescope = "micpscope.cli:main"

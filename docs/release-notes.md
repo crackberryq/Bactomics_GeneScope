@@ -1,3 +1,9 @@
+## GeneScope 0.1.0a10
+
+- Publish from the renamed canonical repository, crackberryq/Bactomics_GeneScope.
+- Update package repository/issue metadata and migration documentation.
+- Preserve historical release tags, workflow aliases, Python imports and output paths. Analysis behavior and application database schemas are unchanged.
+
 ## GeneScope 0.1.0a9
 
 - Separate the reusable GeneScope engine from the bundled MICP application package.
