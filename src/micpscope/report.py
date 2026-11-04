@@ -79,6 +79,37 @@ def reference_summary(search):
             esc(json.dumps(search.get('bibliography', []), indent=2, ensure_ascii=False)) + '</pre></details></details>')
 
 
+def assessment_summary(result):
+    search = result.get('reference_search')
+    app = result.get('application') or {}
+    proteins = result['proteins']
+    if not search:
+        title = 'Descriptor-only run — application assessment not performed'
+        explanation = ('No reference database search was requested. Unassigned proteins are not negative findings. '
+                       'This report contains supplied annotations, calculated protein properties and available coordinates.')
+        next_step = ('In Bactologix, build or register an application database under Databases & models → GeneScope. '
+                     'Select the completed database for a new or edited draft, review the configuration, and run it. '
+                     'Building a database does not attach it to an existing frozen run.')
+    else:
+        matched = sum(bool(q.get('hits')) for q in search.get('queries', {}).values())
+        title = 'Application reference search — ' + str(app.get('name') or search.get('database', {}).get('name') or 'selected database')
+        explanation = (str(matched) + ' proteins have qualifying reference candidates. '
+                       'Similarity candidates require review; proteins without qualifying hits are not proof of biological absence.')
+        next_step = 'Review the reference scores, coverage, competing matches and source evidence in the expandable protein records.'
+    rows = [
+        {'evidence':'Protein descriptors', 'coverage':str(sum(p['status'] == 'calculated' for p in proteins)) + ' calculated'},
+        {'evidence':'Application reference search', 'coverage':'Recorded' if search else 'Not requested'},
+        {'evidence':'Gene coordinates', 'coverage':str(sum(bool(p.get('coordinates')) for p in proteins)) + ' proteins with coordinates'},
+        {'evidence':'Imported signatures', 'coverage':str(sum(bool(p.get('domains')) for p in proteins)) + ' proteins with recorded matches'},
+        {'evidence':'Operon / promoter prediction', 'coverage':'Not assessed by this workflow'},
+        {'evidence':'Measured or literature observations', 'coverage':str(len(result.get('evidence', []))) + ' supplied records'},
+    ]
+    return ('<section class="card" id="assessment-status" role="status"><h2>' + esc(title) +
+            '</h2><p>' + esc(explanation) + '</p><p><strong>Next step:</strong> ' + esc(next_step) +
+            '</p><details><summary>Analysis coverage and missing evidence</summary>' +
+            table(rows, ['evidence','coverage']) + '</details></section>')
+
+
 def render_report(result):
     app = result.get('application') or {}
     application_title = 'GeneScope' + (' — ' + str(app['name']) if app.get('name') else '')
@@ -151,6 +182,7 @@ input{font:inherit;padding:12px;width:100%;border:1px solid #75949d;border-radiu
 </style></head><body><header><div class="eyebrow">BACTOMICS / GENESCOPE</div><p>''' + esc(application_title) + ''' · ''' + esc(app.get("version", "No application selected")) + '''</p><h1>''' + esc(result['sample_id']) + '''</h1>
 <p>Gene context, protein properties & application evidence · ''' + esc(version) + '''</p></header>
 <nav aria-label="Report sections"><a href="#overview">Overview</a><a href="#proteins">Genes & proteins</a><a href="#conditions">Temperature & pH</a><a href="#evidence">Evidence</a><a href="#methods">Methods & sources</a></nav>
+''' + assessment_summary(result) + '''
 <section class="card" id="overview"><h2>Overview</h2><div class="stats"><span><b>''' + str(len(proteins)) + '''</b> protein records</span><span><b>''' + str(linked) + '''</b> catalog-linked annotations</span><span><b>''' + str(calculated) + '''</b> calculated descriptors</span></div>
 <p>Explore functional categories below. Names are supplied annotations; operating optima remain undetermined.</p><details><summary>Scope and interpretation</summary><p>''' + esc(result.get('limitations', '')) + '</p>' + table(summary, ['category','annotation_records','interpretation']) + '''</details></section>''' + quality + reference_summary(search_results) + '''
 <section id="proteins"><h2>Genes & proteins</h2><p>Names and functions come from supplied annotation and a cited catalog. Database similarity candidates, when searched, are shown separately with their scores and reference evidence. Expand a record for descriptors, context and references.</p>

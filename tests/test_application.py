@@ -46,3 +46,20 @@ class ApplicationTests(unittest.TestCase):
               'annotations':{'knowledge_catalog':{'categories':[{'id':'unassigned','name':'Unknown','description':''}],
                 'entries':[],'sources':[{'id':'bad','title':'Bad','type':'test','url':'javascript:alert(1)'}]}}}
         with self.assertRaises(ValueError):catalog(spec)
+
+
+class ReportCoverageTests(unittest.TestCase):
+    def test_descriptor_only_is_not_a_negative_application_result(self):
+        from micpscope.report import assessment_summary
+        html = assessment_summary({'proteins': [], 'evidence': []})
+        self.assertIn('Descriptor-only run', html)
+        self.assertIn('Unassigned proteins are not negative findings', html)
+        self.assertIn('existing frozen run', html)
+
+    def test_zero_matches_differs_from_search_not_requested(self):
+        from micpscope.report import assessment_summary
+        html = assessment_summary({'proteins': [], 'application': {'name': '<custom>'},
+            'reference_search': {'queries': {'q': {'hits': []}}}})
+        self.assertIn('0 proteins have qualifying reference candidates', html)
+        self.assertNotIn('Descriptor-only run', html)
+        self.assertIn('&lt;custom&gt;', html)

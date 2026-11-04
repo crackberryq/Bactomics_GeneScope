@@ -1,3 +1,9 @@
+## GeneScope 0.1.0a11
+
+- Clearly identify descriptor-only runs where no application database search was requested.
+- Add a compact coverage panel and in-app next steps to select a completed application database.
+- Distinguish missing searches from negative findings; retain collapsed protein records and scientific interpretation limits.
+
 ## GeneScope 0.1.0a10
 
 - Publish from the renamed canonical repository, crackberryq/Bactomics_GeneScope.
