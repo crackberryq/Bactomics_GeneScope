@@ -2,6 +2,8 @@
 from pathlib import Path
 import tempfile
 import hashlib
+import json
+from micpscope.report import render_report
 
 from playwright.sync_api import sync_playwright
 from micpscope.cli import legacy_main as main
@@ -22,6 +24,9 @@ with tempfile.TemporaryDirectory() as directory:
         page.goto((base/'out/report.html').as_uri())
         assert page.locator('.protein').count() == 2
         assert page.locator('details[open]').count() == 0
+        assert page.locator('#unassigned-records .protein').count() == 1
+        assert page.locator('#unassigned-records details[open]').count() == 0
+        assert page.evaluate("document.querySelector('#unassigned-records').compareDocumentPosition(document.querySelector('#methods')) & Node.DOCUMENT_POSITION_PRECEDING")
         page.get_by_label('Find a gene, protein, function or identifier').fill('ureC')
         assert page.locator('.protein:visible').count() == 1
         page.get_by_role('button', name='Expand visible records').click()
@@ -53,23 +58,59 @@ with tempfile.TemporaryDirectory() as directory:
         assert page.locator('#genome-explorer').get_attribute('open') is not None
         assert '1 supplied operon annotations' in page.locator('#gx-status').inner_text()
         assert page.locator('#gx-map polygon').count() == 2
+        page.locator('#gx-find').fill('ureC')
+        page.locator('#gx-find').press('Enter')
+        assert 'Located ureC' in page.locator('#gx-selection').inner_text()
         page.locator('#gx-start').fill('100')
         page.locator('#gx-go').click()
         assert page.locator('#gx-map polygon').count() == 0
         page.locator('#gx-reset').click()
         page.locator('#gx-find').fill('p')
         page.locator('#gx-locate').click()
-        assert 'Located p' in page.locator('#gx-selection').inner_text()
+        assert 'Located ureC' in page.locator('#gx-selection').inner_text()
         page.locator('#gx-map polygon').first.press('Enter')
         assert page.locator('.protein[data-index="0"]').get_attribute('open') is not None
+        page.locator('.protein[data-index="0"] .locate-protein').click()
+        assert page.locator('#genome-explorer').get_attribute('open') is not None
+        assert 'Located ureC' in page.locator('#gx-selection').inner_text()
         page.get_by_role('link', name='Visual summary', exact=True).click()
         assert page.locator('#gx-properties circle').count() == 1
+        Path('ui-previews').mkdir(exist_ok=True)
+        page.get_by_role('link', name='Genome explorer', exact=True).click()
+        page.evaluate('window.scrollTo({top:0,behavior:"instant"})')
+        page.screenshot(path='ui-previews/genescope-explorer.png', full_page=True)
         page.get_by_role('button', name='Collapse all').click()
         Path('ui-previews').mkdir(exist_ok=True)
+        page.evaluate('window.scrollTo({top:0,behavior:"instant"})')
         page.screenshot(path='ui-previews/micp-report-desktop.png', full_page=True)
         page.set_viewport_size({'width':390, 'height':844})
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+        page.evaluate('window.scrollTo({top:0,behavior:"instant"})')
         page.screenshot(path='ui-previews/micp-report-mobile.png', full_page=True)
+        assert not errors, errors
+        # Duplicate symbols must offer every locus, never silently select one.
+        result=json.loads((base/'out/results.json').read_text())
+        result['proteins'][1]['gene_name']='ureC'
+        result['context']['features'].append(dict(result['context']['features'][0], feature_id='q', protein_id='q', start=100, end=110))
+        (base/'duplicates.html').write_text(render_report(result))
+        page.goto((base/'duplicates.html').as_uri())
+        page.get_by_role('link', name='Genome explorer', exact=True).click()
+        page.locator('#gx-find').fill('ureC')
+        page.locator('#gx-find').press('Enter')
+        assert page.locator('#gx-results button').count()==2
+        page.locator('#gx-results button').nth(1).click()
+        assert 'q · ctg:100–110' in page.locator('#gx-selection').inner_text()
+        page.locator('#gx-find').fill('no-such-gene')
+        page.locator('#gx-find').press('Enter')
+        assert 'No matching gene coordinates' in page.locator('#gx-status').inner_text()
+        assert page.locator('#gx-results button').count()==0
+        # Database-unmatched records retain annotations, but appear only at the end.
+        result['reference_search']={'queries':{'p':{'hits':[]},'q':{'hits':[]}},'database':{},'interpretation':'fixture','tool_version':'fixture','thresholds':{}}
+        (base/'unmatched.html').write_text(render_report(result))
+        page.goto((base/'unmatched.html').as_uri())
+        assert page.locator('#proteins .protein').count()==0
+        assert page.locator('#unassigned-records .protein').count()==2
+        assert page.locator('#unassigned-records details[open]').count()==0
         assert not errors, errors
         browser.close()
 
