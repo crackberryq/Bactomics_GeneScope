@@ -40,8 +40,8 @@ def catalog(spec):
     categories = [dict(id=m['id'], name=m.get('name', m['id']), description=m.get('description', m.get('interpretation', 'Reference-defined functional group')))
                   for m in modules if isinstance(m, dict) and m.get('id') != 'unassigned'] if isinstance(modules, list) else []
     categories.append(dict(id='unassigned', name='Unassigned proteins', description='No application category assigned; not an absence claim'))
-    return dict(catalog_version=application(spec)['version'], scope=application(spec)['description'],
-                categories=categories, entries=[], sources=[], coverage_gaps=[])
+    return validate_catalog(dict(catalog_version=application(spec)['version'], scope=application(spec)['description'],
+                categories=categories, entries=[], sources=[], coverage_gaps=[]))
 
 
 def validate_catalog(value):

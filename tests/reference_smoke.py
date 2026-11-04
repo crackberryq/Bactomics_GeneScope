@@ -15,7 +15,7 @@ first=read_fasta((database/'proteins.faa').read_text())[0]
 work=root/'reference-smoke';work.mkdir(exist_ok=True)
 query=work/'sample.faa';query.write_text('>query_with_an_unrelated_annotation\n'+first[2]+'\n')
 sheet=work/'samples.tsv';sheet.write_text('sample_id\tproteins\tevidence\nsmoke\t'+str(query)+'\t\n')
-cmd=[sys.executable,'-m','snakemake','-s',str(root/'MICPscope.smk'),'--cores','1','--config',
+cmd=[sys.executable,'-m','snakemake','-s',str(root/'GeneScope.smk'),'--cores','1','--config',
      'reference_database='+str(database),'samples='+str(sheet),'output_dir='+str(work/'results')]
 subprocess.run(cmd,check=True,cwd=root)
 data=json.loads((work/'results/smoke/micpscope/results.json').read_text())
