@@ -408,3 +408,15 @@ footer strong { color: #425b6e; font-weight: 650; }
 }
 """
 
+
+CSS += r"""
+.gx-search {padding:16px;background:var(--teal-soft);border-radius:10px;align-items:center}
+#gx-overview {width:100%;cursor:crosshair;border:1px solid var(--line);border-radius:9px;background:#fafcfd}
+.category-bar {display:grid;grid-template-columns:minmax(140px,1fr) 2fr 45px;gap:18px;align-items:center;width:100%;text-align:left;margin:8px 0;padding:12px 14px;text-transform:capitalize}
+.category-track,.comparison-track {display:block;height:10px;background:#edf1f5;border-radius:5px;overflow:hidden;position:relative;min-width:90px}
+.category-track>span {display:block;height:100%;background:var(--teal);border-radius:5px}
+.comparison-track>span {position:absolute;height:100%;background:var(--teal);min-width:2px}
+#gx-comparison td {vertical-align:middle}#gx-comparison small {display:block;font-size:10px}
+#gx-comparison button {text-align:left}#gx-selection:empty {display:none}
+@media(max-width:740px){.category-bar{grid-template-columns:minmax(90px,1fr) 1fr 30px;gap:8px}.gx-search{display:block}.gx-search input{margin:8px 0}}
+"""

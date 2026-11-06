@@ -48,6 +48,7 @@ def add_context(proteins, gff=None, interpro=None):
             feature = dict(contig=cols[0], start=start, end=end, strand=cols[6],
                            feature_id=next(iter(attrs.get('ID', [])), f'CDS-row-{number}'),
                            product=next(iter(attrs.get('product', [])), 'CDS'),
+                           gene_name=next(iter(attrs.get('gene', [])), ''),
                            protein_id=next(iter(candidates)) if len(candidates) == 1 else None)
             if cols[2] == 'operon':
                 feature['source'] = cols[1]

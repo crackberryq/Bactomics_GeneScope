@@ -10,6 +10,13 @@ def esc(value):
     return html.escape(str(value if value is not None else '—'), quote=True)
 
 
+def display_name(protein):
+    gene = protein.get('gene_name')
+    if gene and str(gene).lower() not in {'unassigned', 'unknown', 'none'}:
+        return gene
+    return protein.get('protein_name') or protein.get('description') or protein['protein_id']
+
+
 def table(rows, columns):
     return '<div class="scroll"><table><thead><tr>' + ''.join(
         '<th scope="col">' + esc(c.replace('_', ' ')) + '</th>' for c in columns
@@ -147,9 +154,9 @@ def render_report(result):
                               for r in p.get('references', []) if r in sources)
             metrics = table([p], ['length','status','aliphatic_index','theoretical_pi','gravy',
                                   'instability_index','molecular_weight_da','aromaticity'])
-            details.append('<details class="protein" data-index="' + str(index_by_id[p['protein_id']]) + '"><summary><strong>' + esc(p.get('gene_name', 'unassigned')) +
-                           '</strong> · ' + esc(p.get('protein_name', p.get('description'))) +
-                           ' <span class="muted">[' + esc(p['protein_id']) + ']</span></summary>' +
+            details.append('<details class="protein" data-index="' + str(index_by_id[p['protein_id']]) + '"><summary><strong>' + esc(display_name(p)) +
+                           '</strong> ' + (' · ' + esc(p.get('protein_name', '')) if display_name(p) != p.get('protein_name') and p.get('protein_name') else '') +
+                           ' <span class="muted">[' + esc(p['protein_id']) + ']</span> <span class="badge">' + esc(('Reference candidate' if p.get('reference_hits') else 'No qualifying database match') if search_results else 'Supplied annotation') + '</span></summary>' +
                            '<button type="button" class="locate-protein" data-protein="' + esc(p['protein_id']) + '">View in genome explorer</button>' +
                            '<p><b>Function:</b> ' + esc(p.get('function', 'Not supplied')) + '</p>' +
                            '<p><b>Annotation:</b> ' + esc(p.get('annotation_status', 'unassessed')) + ' · ' +
@@ -163,7 +170,7 @@ def render_report(result):
                            '<p><b>Input annotation:</b> ' + esc(p.get('description', '')) + '<br><b>Quality:</b> ' +
                            esc(p.get('notes') or 'No residue flags; completeness remains unassessed') + '</p>' +
                            '<p><b>References:</b> ' + (refs or 'No catalog reference assigned') + '</p>' + reference_details(p, search_results) + protein_context(p, context) + '</details>')
-        section = ('<details class="card category" data-category="' + esc(cat['id']) + '" data-empty="' + ('false' if rows else 'true') + '"><summary><strong>' + esc(cat['name']) + '</strong><span class="count">' + str(len(rows)) + ' records</span></summary><p>' + esc(cat['description']) + '</p>' + (''.join(details) or '<p>No assigned records; this does not establish biological absence.</p>') + '</details>')
+        section = ('<details class="card category" data-category="' + esc(cat['id']) + '" data-empty="' + ('false' if rows else 'true') + '"><summary><strong>' + esc(cat['name'].replace('_', ' ').capitalize()) + '</strong><span class="count">' + str(len(rows)) + ' records</span></summary><p>' + esc(cat['description']) + '</p>' + (''.join(details) or '<p>No assigned records; this does not establish biological absence.</p>') + '</details>')
         if cat['_unassigned']:
             unassigned_sections.append(section)
         else:

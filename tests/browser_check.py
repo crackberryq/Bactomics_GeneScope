@@ -112,5 +112,43 @@ with tempfile.TemporaryDirectory() as directory:
         assert page.locator('#unassigned-records .protein').count()==2
         assert page.locator('#unassigned-records details[open]').count()==0
         assert not errors, errors
+        # Large chromosome: late genes are included, names are readable and category bars exclude background.
+        result['reference_search']=None
+        result['proteins'][0]['gene_name']='unassigned'
+        result['proteins'][0]['protein_name']='Named example protein'
+        result['proteins'][1]['gene_name']='unknown'
+        result['context']['sequence_regions']={'ctg':[1,4529685]}
+        template=result['context']['features'][0]
+        result['context']['features']=[dict(template,feature_id='feature-'+str(i),protein_id=None,start=100+i*6000,end=400+i*6000) for i in range(700)]
+        result['context']['features'].append(dict(template,feature_id='p',protein_id='p',start=4200100,end=4201100))
+        result['context']['operons']=[]
+        result['proteins'][0]['coordinates']=[result['context']['features'][-1]]
+        result['proteins'][1]['coordinates']=[]
+        (base/'large.html').write_text(render_report(result))
+        page.goto((base/'large.html').as_uri())
+        page.get_by_role('link',name='Genome explorer',exact=True).click()
+        assert int(page.locator('#gx-end').input_value())==20000
+        assert '701 genes' in page.locator('#gx-overview').text_content()
+        assert 'Operon' not in page.locator('#gx-map').text_content()
+        page.locator('#gx-find').fill('Named example protein')
+        page.locator('#gx-find').press('Enter')
+        assert int(page.locator('#gx-start').input_value())>4000000
+        assert 'Named example protein' in page.locator('#gx-selection').inner_text()
+        page.locator('#gx-reset').click()
+        assert 'Density view includes all CDS' in page.locator('#gx-status').inner_text()
+        assert page.locator('#gx-map rect').count()>100
+        page.get_by_role('link',name='Visual summary',exact=True).click()
+        assert 'unassigned' not in page.locator('#gx-categories').inner_text()
+        assert page.locator('#gx-background').get_attribute('open') is None
+        assert 'Named example protein' in page.locator('#gx-comparison').inner_text()
+        page.locator('#gx-metric').select_option('gravy')
+        page.locator('#gx-categories button').first.click()
+        assert page.locator('.protein[data-index="0"]').is_visible()
+        assert 'unassigned' not in page.locator('.protein[data-index="0"] > summary').inner_text()
+        page.get_by_role('link',name='Visual summary',exact=True).click()
+        page.screenshot(path='ui-previews/genescope-focused-summary.png',full_page=True)
+        page.set_viewport_size({'width':390,'height':844})
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+        assert not errors, errors
         browser.close()
 
