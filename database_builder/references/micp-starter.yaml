@@ -3,7 +3,7 @@ schema_version: '2.0'
 application:
   id: micp
   name: MICP
-  version: 1.0.0
+  version: 1.0.1
   description: Microbially induced calcium carbonate precipitation
 proteins:
 - id: uniprot_P75030
@@ -9103,7 +9103,7 @@ annotations:
     candidate_accessions: []
   knowledge_catalog:
     schema_version: '1.0'
-    catalog_version: 2026.10-starter.1
+    catalog_version: 2026.11-category.2
     reviewed_on: '2026-10-29'
     scope: Focused starter review for descriptive MICP annotation reporting; not an
       exhaustive gene inventory or a sequence reference database.
@@ -9115,28 +9115,42 @@ annotations:
     - Broader EPS, transport, germination and sporulation families
     - Taxon-specific synonym review and sequence-confirmed annotation
     categories:
-    - id: urease
-      name: 'Urease: catalysis'
-      description: Structural components of urea-hydrolysing enzymes.
-    - id: maturation
-      name: 'Urease: maturation'
-      description: Accessory proteins associated with urease maturation.
-    - id: carbonate
-      name: Inorganic carbon conversion
-      description: Carbonic anhydrase families and reported candidates.
-    - id: metabolism
-      name: Metabolism associated with mineralization
-      description: Context-dependent metabolic associations reported in B. subtilis.
+    - id: ureolysis
+      name: Ureolysis
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
+    - id: carbon_handling
+      name: Inorganic carbon handling
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
+    - id: ammonification
+      name: Ammonification context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
+    - id: oxalate_metabolism
+      name: Oxalate metabolism context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
     - id: matrix
       name: Extracellular matrix / biofilm
-      description: Matrix context; not a mineralization-specific marker.
+      description: Matrix context; not a mineralization-specific marker or completeness claim.
+    - id: signalling
+      name: Signalling context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
+    - id: motility
+      name: Motility context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
+    - id: mineral_context
+      name: Mineralization context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
     - id: sporulation
       name: Sporulation context
       description: Developmental annotation only; no persistence or survival prediction.
+    - id: stress_response
+      name: Stress response context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
+    - id: regulation
+      name: Regulation context
+      description: Reference-defined descriptive group; not a pathway completeness or performance claim.
     - id: unassigned
       name: Other / unresolved annotations
-      description: No unique catalog assignment; this does not establish absence of
-        a pathway.
+      description: No resolved reference grouping; this does not establish biological absence.
     entries:
     - id: ureA
       gene_symbols:
@@ -9145,7 +9159,7 @@ annotations:
       product_aliases:
       - urease subunit gamma
       - urease gamma subunit
-      category: urease
+      category: ureolysis
       function: Small structural component of the multimeric urea-hydrolysing enzyme.
       references:
       - urease2020
@@ -9160,7 +9174,7 @@ annotations:
       product_aliases:
       - urease subunit beta
       - urease beta subunit
-      category: urease
+      category: ureolysis
       function: Structural component of the multimeric urea-hydrolysing enzyme.
       references:
       - urease2020
@@ -9175,7 +9189,7 @@ annotations:
       product_aliases:
       - urease subunit alpha
       - urease alpha subunit
-      category: urease
+      category: ureolysis
       function: Catalytic component of the multimeric urea-hydrolysing enzyme.
       references:
       - urease2020
@@ -9189,7 +9203,7 @@ annotations:
       protein_name: Urease accessory protein UreD
       product_aliases:
       - urease accessory protein ureD
-      category: maturation
+      category: ureolysis
       function: Accessory assembly factor.
       references:
       - urease2020
@@ -9202,7 +9216,7 @@ annotations:
       protein_name: Urease accessory protein UreE
       product_aliases:
       - urease accessory protein ureE
-      category: maturation
+      category: ureolysis
       function: Nickel-binding donor involved in maturation.
       references:
       - urease2020
@@ -9215,7 +9229,7 @@ annotations:
       protein_name: Urease accessory protein UreF
       product_aliases:
       - urease accessory protein ureF
-      category: maturation
+      category: ureolysis
       function: Accessory factor in the maturation complex.
       references:
       - urease2020
@@ -9228,7 +9242,7 @@ annotations:
       protein_name: Urease accessory protein UreG
       product_aliases:
       - urease accessory protein ureG
-      category: maturation
+      category: ureolysis
       function: GTP-dependent accessory factor in maturation.
       references:
       - urease2020
@@ -9241,7 +9255,7 @@ annotations:
       product_aliases:
       - alpha-class carbonic anhydrase
       - alpha carbonic anhydrase
-      category: carbonate
+      category: carbon_handling
       function: Catalyses reversible carbon dioxide / bicarbonate interconversion.
       references:
       - ca2024
@@ -9254,7 +9268,7 @@ annotations:
       product_aliases:
       - beta-class carbonic anhydrase
       - beta carbonic anhydrase
-      category: carbonate
+      category: carbon_handling
       function: Catalyses reversible carbon dioxide / bicarbonate interconversion.
       references:
       - ca2024
@@ -9267,7 +9281,7 @@ annotations:
       product_aliases:
       - gamma-class carbonic anhydrase
       - gamma carbonic anhydrase
-      category: carbonate
+      category: carbon_handling
       function: Catalyses reversible carbon dioxide / bicarbonate interconversion.
       references:
       - ca2024
@@ -9279,7 +9293,7 @@ annotations:
       - yvdA
       protein_name: Putative carbonic anhydrase YvdA
       product_aliases: []
-      category: carbonate
+      category: carbon_handling
       function: Reported carbonic-anhydrase candidate.
       references:
       - scaffold2017
@@ -9291,7 +9305,7 @@ annotations:
       - ybcF
       protein_name: Putative carbonic anhydrase YbcF
       product_aliases: []
-      category: carbonate
+      category: carbon_handling
       function: Reported carbonic-anhydrase candidate.
       references:
       - scaffold2017
@@ -9303,7 +9317,7 @@ annotations:
       - ytiB
       protein_name: Putative carbonic anhydrase YtiB
       product_aliases: []
-      category: carbonate
+      category: carbon_handling
       function: Reported carbonic-anhydrase candidate.
       references:
       - scaffold2017
@@ -9315,7 +9329,7 @@ annotations:
       - etfA
       protein_name: Electron transfer flavoprotein alpha subunit
       product_aliases: []
-      category: metabolism
+      category: mineral_context
       function: Electron transfer associated with fatty-acid metabolism.
       references:
       - calcite2007
@@ -9328,7 +9342,7 @@ annotations:
       - etfB
       protein_name: Electron transfer flavoprotein beta subunit
       product_aliases: []
-      category: metabolism
+      category: mineral_context
       function: Partner in electron-transfer metabolism.
       references:
       - calcite2007
@@ -9340,7 +9354,7 @@ annotations:
       - lcfA
       protein_name: Long-chain fatty-acid CoA ligase
       product_aliases: []
-      category: metabolism
+      category: mineral_context
       function: Fatty-acid activation.
       references:
       - calcite2007
@@ -9352,7 +9366,7 @@ annotations:
       - ysiA
       protein_name: Fatty-acid metabolism regulator
       product_aliases: []
-      category: metabolism
+      category: mineral_context
       function: Transcriptional regulation in the studied metabolic cluster.
       references:
       - calcite2007
@@ -9364,7 +9378,7 @@ annotations:
       - ysiB
       protein_name: Putative fatty-acid metabolism protein
       product_aliases: []
-      category: metabolism
+      category: mineral_context
       function: Putative metabolic component of the studied cluster.
       references:
       - calcite2007

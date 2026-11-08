@@ -2,7 +2,7 @@
 
 Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crackberryq/Bactomics_GeneScope).
 
-**0.1.0a10 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
+**0.1.0a16 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
 
 ## Available now
 
@@ -12,11 +12,13 @@ Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crack
 - Optional sample-linked evidence CSV import with source attribution.
 - Self-contained HTML report, machine-readable JSON and spreadsheet-readable protein TSV.
 - Input checksums, software versions and UTC timestamps.
+- Optional DIAMOND similarity candidates with separate supplied annotations, explicit ambiguity/conflict states and visible unresolved-evidence counts.
+- MICP starter 1.0.1 with a consistent category vocabulary; existing 1.0.0 database builds need rebuilding before new searches.
 - Existing output directories are never overwritten.
 
 ## Run through Bactologix
 
-Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a10` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
+Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a16` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
 
 ## Snakemake structure
 
@@ -75,7 +77,7 @@ No license has yet been selected by the repository owner.
 
 The bundled MICP application specification carries its annotation catalog and literature evidence. GeneScope only loads application-specific interpretation from the selected database; an analysis without a database provides generic protein descriptors. See [application packages](docs/application-packages.md).
 
-Annotation uses supplied FASTA headers: explicit `gene=` / UniProt `GN=` symbols, standalone known symbols, or specific product phrases. For example, `>locus_1 [gene=ureC] urease subunit alpha` can link to the urease category. This does not validate function from sequence. Conflicting matches remain unresolved; missing labels are not biological absence. Plain locus-only FASTA cannot provide gene names. Generic product descriptions remain visible even without a catalog match.
+Annotation uses supplied FASTA headers: explicit `gene=` / UniProt `GN=` symbols, standalone known symbols, or specific product phrases. For example, `>locus_1 [gene=ureC] urease subunit alpha` can link to the MICP starter ureolysis category. This does not validate function from sequence. Conflicting matches remain unresolved; missing labels are not biological absence. Plain locus-only FASTA cannot provide gene names. Generic product descriptions remain visible even without a catalog match.
 
 The report separates direct urease context, candidate associations and indirect matrix/sporulation context. Instability index uses the documented below/above-40 heuristic, with exactly 40 left unclassified. No universal aliphatic-index temperature bins or pI activity-pH bins are supported by the reviewed methodology. Numeric operating optima remain undetermined; sample-linked measured or literature observations can be supplied through the existing evidence CSV with identity and assay context.
 
@@ -83,7 +85,7 @@ For later table curation, each catalog entry has `id`, `gene_symbols`, `protein_
 
 ## Compact report and optional recorded context
 
-Reports open with a compact overview. Categories, unresolved records, quality flags, protein details, evidence and methods are collapsed. Empty categories live under a separate disclosure. Search opens matching categories and records; category filters, Collapse all, filtered TSV export and Print / Save PDF work offline.
+Reports open with a compact overview. Unresolved-evidence counts remain visible at the top. Categories, unresolved records, quality flags, protein details, evidence and methods are collapsed. Empty categories live under a separate disclosure. Search opens matching categories and records; category filters, Collapse all, filtered TSV export and Print / Save PDF work offline.
 
 New optional inputs are discovered beside the protein FASTA: `annotation/<sample_id>.gff` for GFF3 CDS coordinates and `annotation/<sample_id>.interpro.tsv` for classic InterProScan TSV (11–15 columns). Bactologix stages existing files automatically; no manual installation of report assets is needed. Protein-only runs remain supported. These are sample analysis inputs, not downloadable reference databases.
 
@@ -97,3 +99,7 @@ Protein cards also show amino-acid composition, residue flags and identical-sequ
 ## Database Builder
 
 Build user-defined reference packages through Bactologix setup using [DatabaseBuilder.smk](DatabaseBuilder.smk). See [input format and limitations](docs/database-builder.md).
+
+## Pre-beta integrity release
+
+Version 0.1.0a16 carries the reviewed evidence-integrity fixes in both the current release and the development channel. See [release notes](docs/release-notes.md) and [integrity details](docs/prebeta-integrity.md). It remains an alpha for controlled testing; these fixes and software checks do not establish analytical accuracy or deployment safety. Bactologix and Bactologix Dev select their own pinned sources and workspaces.

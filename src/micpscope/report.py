@@ -4,6 +4,7 @@ import json
 from .context import neighborhood
 from .explorer import explorer
 from .report_assets import CSS
+from .reference import apply_category_evidence, evidence_label
 
 
 def esc(value):
@@ -49,6 +50,7 @@ def protein_context(protein, context):
     copies = protein.get('identical_sequence_records', [])
     if len(copies) > 1:
         parts.append('<p><b>Identical sequence records:</b> ' + esc(', '.join(copies)) + '. Sequence equality alone does not establish separate genomic copies.</p>')
+    parts.append('<p><b>Coordinate linkage:</b> ' + esc(protein.get('coordinate_linkage', 'unverified for this saved result')) + '</p>')
     parts.append('<details class="subpanel"><summary>Assessment coverage</summary><p>Signatures: ' + esc(protein.get('domain_status','not assessed')) + '<br>Coordinates: ' + esc(protein.get('coordinate_status','not assessed')) + '<br>Localization, disorder, structure and operon prediction: not assessed.</p></details>')
     return ''.join(parts)
 
@@ -92,6 +94,7 @@ def assessment_summary(result):
     search = result.get('reference_search')
     app = result.get('application') or {}
     proteins = result['proteins']
+    review_html = ''
     if not search:
         title = 'Descriptor-only run — application assessment not performed'
         explanation = ('No reference database search was requested. Unassigned proteins are not negative findings. '
@@ -105,6 +108,14 @@ def assessment_summary(result):
         explanation = (str(matched) + ' proteins have qualifying reference candidates. '
                        'Similarity candidates require review; proteins without qualifying hits are not proof of biological absence.')
         next_step = 'Review the reference scores, coverage, competing matches and source evidence in the expandable protein records.'
+        counts = {status: sum(p.get('evidence_status') == status for p in proteins)
+                  for status in ('annotation_reference_conflict', 'ambiguous_candidates', 'unresolved_reference_category')}
+        review_html = ('<p id="evidence-review-status"><strong>Unresolved reference evidence: ' + str(sum(counts.values())) +
+                       ' proteins.</strong> ' + str(counts['annotation_reference_conflict']) + ' annotation/reference conflicts; ' +
+                       str(counts['ambiguous_candidates']) + ' ambiguous candidate sets; ' +
+                       str(counts['unresolved_reference_category']) + ' unknown reference categories. '
+                       'These records are excluded from resolved category summaries and retained under '
+                       '<a href="#unassigned-records">Unassigned proteins</a> for review. Unresolved evidence is not a negative finding.</p>')
     rows = [
         {'evidence':'Protein descriptors', 'coverage':str(sum(p['status'] == 'calculated' for p in proteins)) + ' calculated'},
         {'evidence':'Application reference search', 'coverage':'Recorded' if search else 'Not requested'},
@@ -114,12 +125,17 @@ def assessment_summary(result):
         {'evidence':'Measured or literature observations', 'coverage':str(len(result.get('evidence', []))) + ' supplied records'},
     ]
     return ('<section class="card" id="assessment-status" role="status"><h2>' + esc(title) +
-            '</h2><p>' + esc(explanation) + '</p><p><strong>Next step:</strong> ' + esc(next_step) +
+            '</h2><p>' + esc(explanation) + '</p>' + review_html + '<p><strong>Next step:</strong> ' + esc(next_step) +
             '</p><details><summary>Analysis coverage and missing evidence</summary>' +
             table(rows, ['evidence','coverage']) + '</details></section>')
 
 
 def render_report(result):
+    # Recompute display semantics for saved reports too; never mutate saved evidence.
+    if result.get('reference_search'):
+        result = dict(result, proteins=[dict(p) for p in result['proteins']])
+        for protein in result['proteins']:
+            apply_category_evidence(protein, result['reference_search'])
     app = result.get('application') or {}
     application_title = 'GeneScope' + (' — ' + str(app['name']) if app.get('name') else '')
     proteins = result['proteins']
@@ -135,11 +151,11 @@ def render_report(result):
     def unmatched(p):
         return (bool(search_results) and not p.get("reference_hits")) or p.get("category", "unassigned") == "unassigned"
     groups = [dict(c, _unassigned=False) for c in categories]
-    groups.append(dict(id="unassigned", name="Unassigned proteins", description="No qualifying match to the selected database or no assigned application category. Existing annotations are retained; this is not evidence of biological absence.", _unassigned=True))
+    groups.append(dict(id="unassigned", name="Unassigned proteins", description="Includes annotation/reference conflicts, ambiguous candidates, unknown reference categories, and records with no qualifying match or assigned category. Existing annotations and candidate evidence are retained for review; unresolved or unassigned does not mean biological absence.", _unassigned=True))
     empty_sections = []
     context = result.get('context', {})
     flags = [dict(protein_id=p['protein_id'], flags=', '.join(p.get('quality_flags', [])) or p.get('notes','')) for p in proteins if p.get('quality_flags') or p['status'] != 'calculated']
-    export_columns = ['protein_id','gene_name','protein_name','category','function','length','aliphatic_index','theoretical_pi','gravy','instability_index','annotation_status']
+    export_columns = ['protein_id','gene_name','protein_name','category','function','length','aliphatic_index','theoretical_pi','gravy','instability_index','annotation_status','annotation_category','reference_search_status','evidence_status','evidence_conflicts','reference_gene','reference_protein_name','reference_categories','category_basis','coordinate_status','coordinate_linkage']
     export_data = json.dumps({'columns':export_columns,'rows':[{k:p.get(k,'') for k in export_columns} for p in proteins]},ensure_ascii=False).replace('<', r'\u003c').replace('>', r'\u003e').replace('&', r'\u0026')
     index_by_id = {p['protein_id']:i for i,p in enumerate(proteins)}
     for cat in groups:
@@ -156,11 +172,16 @@ def render_report(result):
                                   'instability_index','molecular_weight_da','aromaticity'])
             details.append('<details class="protein" data-index="' + str(index_by_id[p['protein_id']]) + '"><summary><strong>' + esc(display_name(p)) +
                            '</strong> ' + (' · ' + esc(p.get('protein_name', '')) if display_name(p) != p.get('protein_name') and p.get('protein_name') else '') +
-                           ' <span class="muted">[' + esc(p['protein_id']) + ']</span> <span class="badge">' + esc(('Reference candidate' if p.get('reference_hits') else 'No qualifying database match') if search_results else 'Supplied annotation') + '</span></summary>' +
+                           ' <span class="muted">[' + esc(p['protein_id']) + ']</span> <span class="badge">' + esc(evidence_label(p, bool(search_results))) + '</span></summary>' +
                            '<button type="button" class="locate-protein" data-protein="' + esc(p['protein_id']) + '">View in genome explorer</button>' +
                            '<p><b>Function:</b> ' + esc(p.get('function', 'Not supplied')) + '</p>' +
                            '<p><b>Annotation:</b> ' + esc(p.get('annotation_status', 'unassessed')) + ' · ' +
                            esc(p.get('annotation_basis', 'Not assessed')) + '</p>' + metrics +
+                           '<p><b>Supplied annotation category:</b> ' + esc(p.get('annotation_category', p.get('category', 'unassigned'))) +
+                           '<br><b>Reference candidate label:</b> ' + esc(p.get('reference_gene', '')) + ' · ' + esc(p.get('reference_protein_name', '')) +
+                           '<br><b>All reference categories:</b> ' + esc(', '.join(p.get('reference_categories', []))) +
+                           '<br><b>Evidence conflicts:</b> ' + esc('; '.join(p.get('evidence_conflicts', [])) or 'None recorded') +
+                           '<br><b>Grouping basis:</b> ' + esc(p.get('category_basis', 'Supplied annotation only')) + '</p>' +
                            '<p><b>Evidence level:</b> ' + esc(p.get('evidence_level', 'unassessed')) +
                            '<br><b>Literature scope:</b> ' + esc(p.get('literature_scope', 'Not assessed')) + '</p>' +
                            '<p><b>Descriptor interpretation:</b> ' + esc(p.get('instability_class', 'Not assessed')) +

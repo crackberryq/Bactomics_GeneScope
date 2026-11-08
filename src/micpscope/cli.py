@@ -13,7 +13,6 @@ from .analysis import characterize, read_fasta
 from .knowledge import load_catalog, enrich
 from .context import add_context
 from .reference import attach
-from .report import render_report, table
 
 LIMITS = ("Sequence descriptors do not establish temperature or pH optima, shelf life, "
           "biological activity, material performance, or deployment safety. "
@@ -43,6 +42,7 @@ def read_evidence(path, sample):
 
 
 def render(result):
+    from .report import render_report
     return render_report(result)
 
 
@@ -95,6 +95,7 @@ def main(argv=None, legacy=False):
         report = None if args.data_only else render(result)
         columns = ["protein_id", "gene_name", "protein_name", "function", "category", "annotation_status", "annotation_basis", "literature_scope", "description", "length", "status", "aliphatic_index", "theoretical_pi", "gravy", "instability_index", "molecular_weight_da", "aromaticity", "sequence_sha256", "evidence_type", "completeness", "instability_class", "hydropathy_class", "temperature_indication", "ph_indication", "references", "notes"]
         columns += ["reference_search_status", "best_reference", "reference_identity", "reference_query_coverage", "reference_reference_coverage", "reference_evalue", "reference_bitscore", "reference_database_version"]
+        columns += ["annotation_category", "evidence_status", "evidence_conflicts", "reference_gene", "reference_protein_name", "reference_categories", "category_basis", "coordinate_status", "coordinate_linkage"]
         buffer = io.StringIO(newline="")
         writer = csv.DictWriter(buffer, fieldnames=columns, extrasaction="ignore", delimiter="\t")
         writer.writeheader()

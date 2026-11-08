@@ -1,6 +1,6 @@
 # Database Builder
 
-Open Bactologix → Install & update → Guided setup → MICP Scope → Databases.
+Open Bactologix → Install & update → Guided setup → GeneScope → Databases.
 The bundled literature starter is selected automatically. Build it as supplied,
 or expand **Edit or replace reference specification** to customize or upload YAML/JSON.
 **Restore bundled starter** restores the installed default without modifying its source.
@@ -16,8 +16,10 @@ Stages: validate → retrieve/import → DIAMOND index → package → checksum 
 Each stage records logs and Snakemake benchmarks. Outputs live in a unique
 Bactologix-managed `resources/micpscope/reference-…/database` directory.
 Choose **Select for future drafts** to save its path; existing runs are unchanged.
-The current MICP protein report does not yet search these references. Database
-construction and downstream search integration are separate capabilities.
+GeneScope searches these references only when the completed database is selected
+for the run. Existing frozen runs retain their original configuration and database.
+For version 0.1.0a16, rebuild the bundled starter as MICP 1.0.1; older 1.0.0
+packages have inconsistent category metadata and are rejected for new searches.
 
 ## Local input example
 

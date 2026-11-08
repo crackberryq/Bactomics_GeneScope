@@ -1,11 +1,12 @@
 # Analysis tools and evidence coverage
 
-| Component | Implementation in 0.1.0a5 | Inputs / interpretation |
+| Component | Implementation in 0.1.0a16 | Inputs / interpretation |
 |---|---|---|
 | Snakemake 9.6.2 | Existing native workflow, retained | Tracks optional context inputs and code changes |
 | Biopython 1.86 ProteinAnalysis | Runs locally | Descriptors and residue composition; no operating optima |
 | Protein quality checks | Runs locally | Residue flags and exact sequence groups; no inferred frameshifts or truncation |
-| GFF3 context reader | Runs when a matching sample GFF exists | Exact-ID CDS mapping and adjacent recorded features; not an operon predictor |
+| GFF3 context reader | Runs when a matching sample GFF exists | Declared-bound checks, identifier-only linkage warnings and circular display; no sequence pairing verification or operon prediction |
+| DIAMOND reference search | Runs only with a selected completed database | Similarity candidates with recorded coverage filters, competing matches and explicit annotation conflicts; no experimentally confirmed function |
 | InterProScan TSV reader | Runs when a matching sample TSV exists | Imports classic 11–15-column signatures, verifies sequence MD5/length and bounds; does not execute InterProScan |
 | Report renderer | Runs locally, offline | Native HTML disclosures, SVG tracks and JavaScript search/export; no CDN dependency |
 
