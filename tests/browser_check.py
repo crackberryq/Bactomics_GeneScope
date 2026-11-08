@@ -112,6 +112,42 @@ with tempfile.TemporaryDirectory() as directory:
         assert page.locator('#unassigned-records .protein').count()==2
         assert page.locator('#unassigned-records details[open]').count()==0
         assert not errors, errors
+        # Conflicting and ambiguous candidates are visible before opening protein details.
+        hit = dict(reference_id='ref', identity=99, query_coverage=100,
+                   reference_coverage=100, evalue=1e-10, bitscore=100)
+        result['reference_search'] = dict(
+            queries={'p': {'status': 'reference_candidate', 'hits': [hit]},
+                     'q': {'status': 'ambiguous_candidates', 'hits': [hit]}},
+            references={'ref': {'id': 'ref', 'gene': 'tasA', 'protein_name': 'Synthetic reference', 'categories': ['matrix']}},
+            knowledge_catalog=result['knowledge_catalog'], database={},
+            interpretation='Synthetic state fixture', tool_version='fixture', thresholds={})
+        (base/'conflict.html').write_text(render_report(result))
+        page.goto((base/'conflict.html').as_uri())
+        assert page.locator('#proteins .protein').count() == 0
+        assert page.locator('#unassigned-records .protein').count() == 2
+        assert 'Annotation / reference conflict' in page.locator('.protein[data-index="0"] > summary').inner_text()
+        assert 'Ambiguous reference candidates' in page.locator('.protein[data-index="1"] > summary').inner_text()
+        assert page.locator('#gx-categories button').count() == 0
+        with page.expect_download() as download:
+            page.get_by_role('button', name='Export filtered TSV').click()
+        content = Path(download.value.path()).read_text()
+        assert 'annotation_reference_conflict' in content and 'ambiguous_candidates' in content
+        assert not errors, errors
+        # A circular-origin CDS has two drawable intervals but remains one source CDS.
+        circular = json.loads((base/'out/results.json').read_text())
+        feature = dict(circular['context']['features'][0], start=995, end=1006,
+                       circular_wrap=True, display_segments=[[995, 1000], [1, 6]])
+        circular['context']['features'] = [feature]
+        circular['context']['operons'] = []
+        circular['proteins'][0]['coordinates'] = [feature]
+        (base/'circular.html').write_text(render_report(circular))
+        page.goto((base/'circular.html').as_uri())
+        page.get_by_role('link', name='Genome explorer', exact=True).click()
+        assert '1 CDS;' in page.locator('#gx-status').inner_text()
+        assert '2 drawable CDS intervals' in page.locator('#gx-status').inner_text()
+        assert page.locator('#gx-map polygon').count() == 2
+        assert '1 genes' in page.locator('#gx-overview').text_content()
+        assert not errors, errors
         # Large chromosome: late genes are included, names are readable and category bars exclude background.
         result['reference_search']=None
         result['proteins'][0]['gene_name']='unassigned'

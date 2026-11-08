@@ -1,4 +1,4 @@
-# MICP literature starter 1.0.0
+# MICP literature starter 1.0.1
 
 `micp-starter.yaml` is the default Database Builder input. `starter-proteins.faa`
 is shipped beside it, so sequence import works offline after the environment
@@ -33,4 +33,8 @@ consensus motifs and inferred relationships. These are retained in the
 literature evidence layer. No absolute genome intervals were established from
 these documents alone, so the regulatory sequence list is empty. A build must
 not present these observations as mapped sample promoters or measured activity.
-The current MICP report does not yet search this database.
+GeneScope can search a completed build when it is explicitly selected for a run.
+Version 1.0.1 aligns the annotation catalog and reference category vocabulary;
+reference sequences are unchanged. Rebuild older packages from the corrected
+specification to obtain the new version and checksums. See
+[the integrity notes](../../docs/prebeta-integrity.md) for grouping and review states.

@@ -42,7 +42,7 @@ rule protein_properties:
         sidecars=lambda w: [str(p) for suffix in (".gff", ".interpro.tsv", ".fna") if (p := Path(SAMPLES[w.sample]["proteins"]).with_suffix(suffix)).is_file()],
         reference=lambda w: [OUT + "/" + w.sample + "/micpscope/reference-search.json"] if DATABASE else [],
         sheet=str(SHEET),
-        code=[str(ROOT / "src/micpscope" / name) for name in ["application.py", "analysis.py", "reference.py", "cli.py", "knowledge.py", "context.py", "report.py", "data/micp_catalog.json", "__init__.py"]]
+        code=[str(ROOT / "src/micpscope" / name) for name in ["application.py", "analysis.py", "reference.py", "cli.py", "knowledge.py", "context.py", "data/micp_catalog.json", "__init__.py"]] + [str(ROOT / "scripts/properties.py")]
     output:
         data=OUT + "/{sample}/micpscope/results.json",
         table=OUT + "/{sample}/micpscope/proteins.tsv"
@@ -64,7 +64,7 @@ rule report:
     input:
         data=rules.protein_properties.output.data,
         table=rules.protein_properties.output.table,
-        code=[str(ROOT / "src/micpscope" / name) for name in ["cli.py", "report.py", "context.py"]]
+        code=[str(ROOT / "src/micpscope" / name) for name in ["cli.py", "report.py", "context.py", "reference.py", "application.py", "explorer.py", "report_assets.py"]] + [str(ROOT / "scripts/report.py")]
     output:
         OUT + "/{sample}/micpscope/report.html"
     log:
@@ -86,7 +86,7 @@ if DATABASE:
         input:
             proteins=lambda w: SAMPLES[w.sample]["proteins"],
             database=[str(Path(DATABASE) / name) for name in ("proteins.dmnd", "proteins.faa", "reference-manifest.json", "checksums.json", "completed.json", "diamond-version.txt")],
-            code=[str(ROOT / "src/micpscope/application.py"), str(ROOT / "src/micpscope/reference.py"), str(ROOT / "scripts/reference_search.py")]
+            code=[str(ROOT / "src/micpscope/application.py"), str(ROOT / "src/micpscope/reference.py"), str(ROOT / "src/micpscope/analysis.py"), str(ROOT / "scripts/reference_search.py")]
         output:
             data=OUT + "/{sample}/micpscope/reference-search.json",
             hits=OUT + "/{sample}/micpscope/reference-search.hits.tsv"

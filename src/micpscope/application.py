@@ -35,13 +35,29 @@ def catalog(spec):
     annotations = spec.get('annotations', {})
     supplied = annotations.get('knowledge_catalog') if isinstance(annotations, dict) else None
     if supplied:
-        return validate_catalog(supplied)
+        result = validate_catalog(supplied)
+        validate_reference_categories(spec.get('proteins', []), result)
+        return result
     modules = spec.get('modules', [])
     categories = [dict(id=m['id'], name=m.get('name', m['id']), description=m.get('description', m.get('interpretation', 'Reference-defined functional group')))
                   for m in modules if isinstance(m, dict) and m.get('id') != 'unassigned'] if isinstance(modules, list) else []
     categories.append(dict(id='unassigned', name='Unassigned proteins', description='No application category assigned; not an absence claim'))
-    return validate_catalog(dict(catalog_version=application(spec)['version'], scope=application(spec)['description'],
+    result = validate_catalog(dict(catalog_version=application(spec)['version'], scope=application(spec)['description'],
                 categories=categories, entries=[], sources=[], coverage_gaps=[]))
+    validate_reference_categories(spec.get('proteins', []), result)
+    return result
+
+
+def validate_reference_categories(proteins, knowledge):
+    """Category names are package metadata, not inferred from protein labels."""
+    allowed = {c['id'] for c in knowledge.get('categories', [])}
+    for protein in proteins:
+        if not isinstance(protein, dict):
+            raise ValueError('Reference records must be mappings')
+        values = protein.get('categories', [])
+        if (not isinstance(values, list) or any(not isinstance(c, str) for c in values)
+                or len(set(values)) != len(values) or set(values) - allowed):
+            raise ValueError('Unknown, duplicate or malformed reference categories: ' + str(protein.get('id')))
 
 
 def validate_catalog(value):

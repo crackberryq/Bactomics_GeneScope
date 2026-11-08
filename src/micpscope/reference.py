@@ -1,5 +1,5 @@
 """Traceable protein similarity search; reference associations are not activity calls."""
-from .application import application, catalog
+from .application import application, catalog, validate_catalog, validate_reference_categories
 import hashlib
 import json
 import math
@@ -37,6 +37,7 @@ def verify_database(folder, expected=None):
     if manifest.get('schema_version') != '1.0':
         raise ValueError('Unsupported reference database schema')
     application(manifest['specification'])
+    catalog(manifest['specification'])
     return manifest, identity
 
 
@@ -123,6 +124,8 @@ def attach(proteins, path, input_sha256):
         raise ValueError('Reference results do not match this protein input')
     if set(result['queries']) != {p['protein_id'] for p in proteins}:
         raise ValueError('Reference query identifiers do not match this input')
+    knowledge = validate_catalog(result.get('knowledge_catalog', {}))
+    validate_reference_categories(result['references'].values(), knowledge)
     for protein in proteins:
         row = result['queries'][protein['protein_id']]
         protein['reference_search_status'] = row['status']
@@ -132,12 +135,78 @@ def attach(proteins, path, input_sha256):
             protein['best_reference'] = hit['reference_id']
             for key in ('identity', 'query_coverage', 'reference_coverage', 'evalue', 'bitscore'):
                 protein['reference_' + key] = hit[key]
-        if row['status'] == 'reference_candidate' and protein.get('category') == 'unassigned':
-            ref = result['references'][row['hits'][0]['reference_id']]
-            categories = {c['id'] for c in result.get('knowledge_catalog', {}).get('categories', [])}
-            matched = [c for c in ref.get('categories', []) if c in categories]
-            if matched:
-                protein['category'] = matched[0]
-                protein['category_basis'] = 'Reference similarity candidate; function is not experimentally established'
+        apply_category_evidence(protein, result)
         protein['reference_database_version'] = result['database']['version']
     return result
+
+
+def apply_category_evidence(protein, result):
+    """Keep supplied labels and reference grouping separate, including saved reports."""
+    row = result.get('queries', {}).get(protein['protein_id'], {})
+    hits = row.get('hits', protein.get('reference_hits', []))
+    status = row.get('status', protein.get('reference_search_status', 'unassessed'))
+    supplied = protein.get('supplied_annotation')
+    if supplied is None:
+        supplied = {k: protein.get(k) for k in ('gene_name', 'protein_name', 'function', 'category', 'annotation_status', 'annotation_basis')}
+        if protein.get('category_basis', '').startswith('Reference similarity'):
+            supplied['category'] = 'unassigned'
+    protein['supplied_annotation'] = supplied
+    protein['annotation_category'] = supplied.get('category', 'unassigned')
+    protein['reference_search_status'] = status
+    protein['reference_hits'] = hits
+    protein['reference_categories'] = []
+    protein['reference_gene'] = ''
+    protein['reference_protein_name'] = ''
+    protein['category'] = 'unassigned'
+    protein['evidence_status'] = status
+    protein['evidence_conflicts'] = []
+    protein['category_basis'] = 'Unresolved or unassessed reference grouping; supplied annotation retained separately'
+    if not hits:
+        return
+    ref = result['references'][hits[0]['reference_id']]
+    protein['reference_gene'] = ref.get('gene', '')
+    protein['reference_protein_name'] = ref.get('protein_name', '')
+    best = hits[0]['bitscore']
+    near = [result['references'][h['reference_id']] for h in hits if h['bitscore'] >= best * .95]
+    categories = list(dict.fromkeys(c for r in near for c in r.get('categories', [])))
+    protein['reference_categories'] = categories
+    known = {c['id'] for c in result.get('knowledge_catalog', {}).get('categories', [])}
+    if set(categories) - known:
+        protein['evidence_status'] = 'unresolved_reference_category'
+        return
+    if status == 'ambiguous_candidates' or len({tuple(sorted(r.get('categories', []))) for r in near}) > 1:
+        protein['evidence_status'] = 'ambiguous_candidates'
+        return
+    if status != 'reference_candidate':
+        return
+    annotation = protein['annotation_category']
+    if annotation not in (None, '', 'unassigned') and annotation not in categories:
+        protein['evidence_conflicts'].append('Supplied annotation category differs from the reference categories')
+    supplied_genes = {s.strip().casefold() for s in str(supplied.get('gene_name', '')).split(',')} - {'', 'unassigned', 'family only'}
+    for entry in result.get('knowledge_catalog', {}).get('entries', []):
+        if entry['id'] in protein.get('catalog_ids', []):
+            supplied_genes.update(g.casefold() for g in entry.get('gene_symbols', []))
+    reference_genes = {r.get('gene', '').casefold() for r in near} - {''}
+    if supplied_genes and reference_genes and not supplied_genes & reference_genes:
+        protein['evidence_conflicts'].append('Supplied and reference gene labels differ; nomenclature or annotation requires review')
+    if protein['evidence_conflicts']:
+        protein['evidence_status'] = 'annotation_reference_conflict'
+        return
+    if categories:
+        protein['category'] = categories[0]
+        protein['category_basis'] = ('Reference similarity candidate; primary grouping uses the first category declared by the reference. '
+                                     'All reference categories are retained; function is not experimentally established')
+
+
+def evidence_label(protein, searched):
+    if not searched:
+        return 'Supplied annotation · search not requested'
+    return {
+        'reference_candidate': 'Reference candidate · function unconfirmed',
+        'ambiguous_candidates': 'Ambiguous reference candidates · unresolved',
+        'annotation_reference_conflict': 'Annotation / reference conflict · unresolved',
+        'unresolved_reference_category': 'Unknown reference category · unresolved',
+        'skipped_unsupported_residues': 'Reference search skipped · unsupported residues',
+        'no_qualifying_hit': 'No qualifying reference hit · absence unproven',
+        'not_requested': 'Reference search not requested',
+    }.get(protein.get('evidence_status', protein.get('reference_search_status')), 'Reference assessment unverified')

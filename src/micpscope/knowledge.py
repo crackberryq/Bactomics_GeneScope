@@ -64,5 +64,11 @@ def interpret_descriptors(row):
 def enrich(proteins, catalog):
     for row in proteins:
         row.update(annotation_context(row['protein_id'], row['description'], catalog))
+        row['supplied_annotation'] = {k: row[k] for k in (
+            'gene_name', 'protein_name', 'function', 'category', 'annotation_status', 'annotation_basis')}
+        row['annotation_category'] = row['category']
+        row['reference_search_status'] = 'not_requested'
+        row['evidence_status'] = 'not_requested'
+        row['category_basis'] = 'Supplied annotation only; no sequence reference search requested'
         row.update(interpret_descriptors(row))
     return proteins
