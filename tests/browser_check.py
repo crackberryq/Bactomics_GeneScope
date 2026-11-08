@@ -3,9 +3,10 @@ from pathlib import Path
 import tempfile
 import hashlib
 import json
+import re
 from micpscope.report import render_report
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 from micpscope.cli import legacy_main as main
 
 with tempfile.TemporaryDirectory() as directory:
@@ -121,12 +122,30 @@ with tempfile.TemporaryDirectory() as directory:
             references={'ref': {'id': 'ref', 'gene': 'tasA', 'protein_name': 'Synthetic reference', 'categories': ['matrix']}},
             knowledge_catalog=result['knowledge_catalog'], database={},
             interpretation='Synthetic state fixture', tool_version='fixture', thresholds={})
-        (base/'conflict.html').write_text(render_report(result))
+        conflict_html = render_report(result)
+        conflict_payload = json.loads(re.search(r'<script id="gx-data" type="application/json">(.*?)</script>', conflict_html, re.S)[1])
+        assert [p['evidence_status'] for p in conflict_payload['proteins']] == ['annotation_reference_conflict', 'ambiguous_candidates']
+        assert 'Annotation / reference conflict · unresolved' in conflict_html
+        assert 'Ambiguous reference candidates · unresolved' in conflict_html
+        (base/'conflict.html').write_text(conflict_html)
         page.goto((base/'conflict.html').as_uri())
         assert page.locator('#proteins .protein').count() == 0
         assert page.locator('#unassigned-records .protein').count() == 2
-        assert 'Annotation / reference conflict' in page.locator('.protein[data-index="0"] > summary').inner_text()
-        assert 'Ambiguous reference candidates' in page.locator('.protein[data-index="1"] > summary').inner_text()
+        # Review counts must be visible while every category is still collapsed.
+        review_status = page.locator('#evidence-review-status')
+        expect(review_status).to_be_visible()
+        expect(review_status).to_contain_text('Unresolved reference evidence: 2 proteins.')
+        expect(review_status).to_contain_text('1 annotation/reference conflicts; 1 ambiguous candidate sets; 0 unknown reference categories.')
+        assert page.locator('#unassigned-records .category[open]').count() == 0
+        # Open the parent group so the collapsed protein summaries are rendered.
+        # innerText inside a closed ancestor details element is browser-dependent.
+        page.locator('#unassigned-records .category > summary').click()
+        for index, label in enumerate(('Annotation / reference conflict · unresolved', 'Ambiguous reference candidates · unresolved')):
+            protein = page.locator(f'.protein[data-index="{index}"]')
+            assert protein.get_attribute('open') is None
+            badge = protein.locator('> summary .badge')
+            expect(badge).to_be_visible()
+            expect(badge).to_have_text(label)
         assert page.locator('#gx-categories button').count() == 0
         with page.expect_download() as download:
             page.get_by_role('button', name='Export filtered TSV').click()

@@ -14,7 +14,7 @@ from micpscope.analysis import characterize
 from micpscope.cli import main
 from micpscope.knowledge import enrich
 from micpscope.reference import attach, apply_category_evidence
-from micpscope.report import render_report
+from micpscope.report import render_report, assessment_summary
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,6 +34,17 @@ def evidence(proteins, status='reference_candidate', categories=None, gene=''):
 
 
 class EvidenceIntegrityTests(unittest.TestCase):
+    def test_top_summary_counts_unresolved_states_without_closed_details(self):
+        states = ['annotation_reference_conflict', 'ambiguous_candidates', 'ambiguous_candidates',
+                  'unresolved_reference_category', 'reference_candidate', 'no_qualifying_hit']
+        result = dict(proteins=[dict(protein_id=str(i), status='calculated', evidence_status=s)
+                                for i, s in enumerate(states)], reference_search={'queries': {}})
+        html = assessment_summary(result)
+        visible = html.split('<details>', 1)[0]
+        self.assertIn('Unresolved reference evidence: 4 proteins.', visible)
+        self.assertIn('1 annotation/reference conflicts; 2 ambiguous candidate sets; 1 unknown reference categories.', visible)
+        self.assertIn('Unresolved evidence is not a negative finding', visible)
+
     def test_every_starter_record_resolves_with_neutral_query_id(self):
         spec = yaml.safe_load((ROOT / 'database_builder/references/micp-starter.yaml').read_text())
         k = catalog(spec)

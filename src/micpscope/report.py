@@ -94,6 +94,7 @@ def assessment_summary(result):
     search = result.get('reference_search')
     app = result.get('application') or {}
     proteins = result['proteins']
+    review_html = ''
     if not search:
         title = 'Descriptor-only run — application assessment not performed'
         explanation = ('No reference database search was requested. Unassigned proteins are not negative findings. '
@@ -107,6 +108,14 @@ def assessment_summary(result):
         explanation = (str(matched) + ' proteins have qualifying reference candidates. '
                        'Similarity candidates require review; proteins without qualifying hits are not proof of biological absence.')
         next_step = 'Review the reference scores, coverage, competing matches and source evidence in the expandable protein records.'
+        counts = {status: sum(p.get('evidence_status') == status for p in proteins)
+                  for status in ('annotation_reference_conflict', 'ambiguous_candidates', 'unresolved_reference_category')}
+        review_html = ('<p id="evidence-review-status"><strong>Unresolved reference evidence: ' + str(sum(counts.values())) +
+                       ' proteins.</strong> ' + str(counts['annotation_reference_conflict']) + ' annotation/reference conflicts; ' +
+                       str(counts['ambiguous_candidates']) + ' ambiguous candidate sets; ' +
+                       str(counts['unresolved_reference_category']) + ' unknown reference categories. '
+                       'These records are excluded from resolved category summaries and retained under '
+                       '<a href="#unassigned-records">Unassigned proteins</a> for review. Unresolved evidence is not a negative finding.</p>')
     rows = [
         {'evidence':'Protein descriptors', 'coverage':str(sum(p['status'] == 'calculated' for p in proteins)) + ' calculated'},
         {'evidence':'Application reference search', 'coverage':'Recorded' if search else 'Not requested'},
@@ -116,7 +125,7 @@ def assessment_summary(result):
         {'evidence':'Measured or literature observations', 'coverage':str(len(result.get('evidence', []))) + ' supplied records'},
     ]
     return ('<section class="card" id="assessment-status" role="status"><h2>' + esc(title) +
-            '</h2><p>' + esc(explanation) + '</p><p><strong>Next step:</strong> ' + esc(next_step) +
+            '</h2><p>' + esc(explanation) + '</p>' + review_html + '<p><strong>Next step:</strong> ' + esc(next_step) +
             '</p><details><summary>Analysis coverage and missing evidence</summary>' +
             table(rows, ['evidence','coverage']) + '</details></section>')
 
@@ -142,7 +151,7 @@ def render_report(result):
     def unmatched(p):
         return (bool(search_results) and not p.get("reference_hits")) or p.get("category", "unassigned") == "unassigned"
     groups = [dict(c, _unassigned=False) for c in categories]
-    groups.append(dict(id="unassigned", name="Unassigned proteins", description="No qualifying match to the selected database or no assigned application category. Existing annotations are retained; this is not evidence of biological absence.", _unassigned=True))
+    groups.append(dict(id="unassigned", name="Unassigned proteins", description="Includes annotation/reference conflicts, ambiguous candidates, unknown reference categories, and records with no qualifying match or assigned category. Existing annotations and candidate evidence are retained for review; unresolved or unassigned does not mean biological absence.", _unassigned=True))
     empty_sections = []
     context = result.get('context', {})
     flags = [dict(protein_id=p['protein_id'], flags=', '.join(p.get('quality_flags', [])) or p.get('notes','')) for p in proteins if p.get('quality_flags') or p['status'] != 'calculated']
