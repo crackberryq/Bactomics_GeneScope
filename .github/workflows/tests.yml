@@ -32,9 +32,10 @@ jobs:
       options: --ipc=host --init
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      # Use Python built for this Noble image, not a host toolcache interpreter.
+      # ubuntu-latest can have a newer libc/OpenSSL than the container.
+      - name: Check container Python and TLS
+        run: python -c "import ssl, sys; print(sys.version); print(ssl.OPENSSL_VERSION)"
       - run: python -m pip install . 'playwright==1.64.1'
       - run: python tests/browser_check.py
       - uses: actions/upload-artifact@v4
