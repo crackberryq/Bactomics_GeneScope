@@ -7,8 +7,11 @@ SPEC = str(Path(config.get('reference_spec', ROOT / 'database_builder/references
 OUT = str(Path(config['build_dir']).resolve())
 sys.path.insert(0, str(ROOT / 'src'))
 from micpscope.application import archive_name
+from micpscope.artifact_retention import install
+install(workflow, OUT)
+
 SCRIPT = str(ROOT / 'database_builder/build.py')
-CODE = [SCRIPT, str(ROOT / 'database_builder/downloads.py'), str(ROOT / 'src/micpscope/application.py')]
+CODE = [SCRIPT, str(ROOT / 'database_builder/downloads.py'), str(ROOT / 'src/micpscope/application.py'), str(ROOT / 'src/micpscope/retention.py'), str(ROOT / 'src/micpscope/artifact_retention.py'), str(ROOT / 'scripts/index_database.py')]
 DOCUMENT = yaml.safe_load(Path(SPEC).read_text())
 ASSETS = sorted({str((Path(SPEC).parent / row['path']).resolve()) for group in ('proteins', 'regulatory') for row in DOCUMENT.get(group, []) if 'path' in row})
 
@@ -32,14 +35,15 @@ rule retrieve_references:
     shell: 'python {SCRIPT:q} retrieve {input.plan:q} {output:q} > {log:q} 2>&1'
 
 rule index_proteins:
-    input: rules.retrieve_references.output
+    input: sequences=rules.retrieve_references.output, code=CODE
     output: index=OUT + '/index/proteins.dmnd', version=OUT + '/index/proteins.version.txt'
     log: OUT + '/logs/index.log'
     benchmark: OUT + '/benchmarks/index.tsv'
     threads: config.get('threads', 2)
     resources: mem_mb=config.get('memory_mb', 2048)
     conda: 'envs/database-builder.yml'
-    shell: 'diamond version > {output.version:q}; diamond makedb --in {input:q}/proteins.faa --db {output.index:q} --threads {threads} > {log:q} 2>&1'
+    params: script=str(ROOT / 'scripts/index_database.py'), root=str(ROOT)
+    shell: 'python {params.script:q} {params.root:q} {input.sequences:q}/proteins.faa {output.index:q} {output.version:q} {threads} > {log:q} 2>&1'
 
 rule package_database:
     input: plan=rules.validate_references.output, sequences=rules.retrieve_references.output, index=rules.index_proteins.output.index, version=rules.index_proteins.output.version, code=CODE

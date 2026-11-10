@@ -29,7 +29,7 @@ class ReferenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);db=fixture(root)
             proteins=root/'input.faa';proteins.write_text('>sample|id\nACDEFGHIKLMNPQRSTVWY*\n>bad\nAX\n>none\nACDEFGHIKLMNPQRSTVWY\n')
-            def run(command, check):
+            def run(command, check, **kwargs):
                 Path(command[command.index('--out')+1]).write_text(
                     'q0\tp1\t90\t1\t20\t1\t20\t20\t20\t1e-20\t100\n'
                     'q0\tp2\t89\t1\t20\t1\t20\t20\t20\t1e-19\t97\n'

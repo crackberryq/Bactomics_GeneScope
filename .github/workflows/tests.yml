@@ -19,6 +19,8 @@ jobs:
       - run: snakemake -s MICPscope.smk --cores 1 --dry-run
       - name: Verify rendering dependency invalidation
         run: python tests/workflow_dependency_check.py
+      - name: Verify generated-data retention through retries and reruns
+        run: python tests/workflow_retention_check.py
       - run: snakemake -s MICPscope.smk --cores 1
       - run: test -s results/demo/micpscope/report.html
       - run: snakemake -s MICPscope.smk --cores 1 --dry-run

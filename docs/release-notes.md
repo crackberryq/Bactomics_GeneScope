@@ -1,3 +1,28 @@
+# GeneScope 0.1.0a17
+
+Generated-data preservation is a core current-branch feature, applied to both
+main and development. Search algorithms, thresholds and interpretation are unchanged.
+
+- Preserve prior declared products, logs and benchmark records before Snakemake
+  removes them on a rerun, retry or report refresh; retain incomplete outputs.
+- Retain descriptor/report attempts and native DIAMOND query files, raw hit tables,
+  commands, versions, standard output/error and temporary files. Use the supported
+  `--no-unlink` flag and persistent temporary directories in DIAMOND 2.1.11.
+- Preserve native Database Builder outputs and failed build attempts. Publishing
+  replacements keeps the previous file or directory, including native sidecars.
+- Refuse replacement when preservation fails or output ownership is unsafe.
+  The adapter supports pinned Snakemake 9.6.2 and 9.27.1; it refuses other versions.
+
+Current outputs remain at their existing paths. Previous workflow products are
+under `output_dir/retained/` (or `build_dir/retained/` for databases); durable
+sample-stage attempts are under `<sample>/micpscope/retained/`. Export the complete
+output tree to include history. No existing lost files can be recovered by this
+update. Cleanup requires a separate explicit user decision; completion is never
+permission to delete generated evidence.
+
+DIAMOND retention flags were checked against the pinned upstream source:
+https://github.com/bbuchfink/diamond/blob/v2.1.11/src/basic/config.cpp
+
 # GeneScope 0.1.0a16
 
 This alpha release applies the pre-beta evidence-integrity fixes to the current

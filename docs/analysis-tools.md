@@ -1,6 +1,6 @@
 # Analysis tools and evidence coverage
 
-| Component | Implementation in 0.1.0a16 | Inputs / interpretation |
+| Component | Implementation in 0.1.0a17 | Inputs / interpretation |
 |---|---|---|
 | Snakemake 9.6.2 | Existing native workflow, retained | Tracks optional context inputs and code changes |
 | Biopython 1.86 ProteinAnalysis | Runs locally | Descriptors and residue composition; no operating optima |

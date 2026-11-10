@@ -24,6 +24,7 @@ with tempfile.TemporaryDirectory(prefix='genescope-render-dependencies-') as td:
     table = data.with_name('proteins.tsv')
     original = [(p.read_bytes(), p.stat().st_mtime_ns) for p in (data, table)]
     for name in ('src/micpscope/explorer.py', 'src/micpscope/report_assets.py', 'scripts/report.py'):
+        previous_report = (data.parent / 'report.html').read_bytes()
         path = root / name
         path.write_text(path.read_text() + '\n# Rendering dependency regression fixture.\n')
         # Make the edit newer than all saved outputs even on coarse filesystem clocks.
@@ -35,4 +36,6 @@ with tempfile.TemporaryDirectory(prefix='genescope-render-dependencies-') as td:
         assert 'rule protein_properties:' not in output, output
         subprocess.run(command, cwd=root, check=True)
         assert [(p.read_bytes(), p.stat().st_mtime_ns) for p in (data, table)] == original
+        archived = list((root / 'results/retained').glob('*/files/demo/micpscope/report.html'))
+        assert any(path.read_bytes() == previous_report for path in archived), 'Prior report was not retained before refresh'
     print('Renderer dependency edits regenerate HTML without recomputing protein data.')

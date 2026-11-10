@@ -2,7 +2,7 @@
 
 Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crackberryq/Bactomics_GeneScope).
 
-**0.1.0a16 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
+**0.1.0a17 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
 
 ## Available now
 
@@ -14,11 +14,11 @@ Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crack
 - Input checksums, software versions and UTC timestamps.
 - Optional DIAMOND similarity candidates with separate supplied annotations, explicit ambiguity/conflict states and visible unresolved-evidence counts.
 - MICP starter 1.0.1 with a consistent category vocabulary; existing 1.0.0 database builds need rebuilding before new searches.
-- Existing output directories are never overwritten.
+- The direct descriptor CLI refuses existing output directories. Workflow retries and refreshes preserve prior products before publishing replacements.
 
 ## Run through Bactologix
 
-Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a16` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
+Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a17` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
 
 ## Snakemake structure
 
@@ -103,3 +103,31 @@ Build user-defined reference packages through Bactologix setup using [DatabaseBu
 ## Pre-beta integrity release
 
 Version 0.1.0a16 carries the reviewed evidence-integrity fixes in both the current release and the development channel. See [release notes](docs/release-notes.md) and [integrity details](docs/prebeta-integrity.md). It remains an alpha for controlled testing; these fixes and software checks do not establish analytical accuracy or deployment safety. Bactologix and Bactologix Dev select their own pinned sources and workspaces.
+
+## Generated data are retained
+
+Retention is a core feature of the current workflow. GeneScope does not clean up
+generated research products after successful or failed execution. Before a
+Snakemake job replaces its declared outputs, logs or benchmark files, their
+previous versions are moved into `output_dir/retained/<attempt>/files/`, with a
+manifest identifying their original paths. Database Builder uses the same policy
+under `build_dir/retained/`. This includes retries within one invocation. Failure
+to preserve a prior product stops execution; no copy/delete fallback is used.
+
+Each descriptor, report, reference-search and database-build stage also keeps a
+durable attempt directory. For sample analyses these are under
+`<sample>/micpscope/retained/`. Reference-search attempts contain the exact query
+FASTA, unfiltered native hit table, command, tool version, standard output/error,
+and DIAMOND temporary files. DIAMOND runs with `--no-unlink` and a persistent
+temporary directory. Generated JSON/TSV/HTML products remain in their attempt
+directories after publication. Failed attempts keep their partial products and
+an explicit failure receipt; they are not presented as successful results.
+
+The retention adapter is checked against Snakemake 9.6.2 and 9.27.1 and fails
+closed for unsupported versions or unsafe output ownership. It keeps incomplete
+outputs and disables automatic temporary-output deletion. It does not preserve
+unwritten in-memory state, recover files removed by older versions, or turn a
+retained failed artifact into a validated result. Export the complete output tree,
+including every `retained/` directory, to carry the history with the isolate.
+Disk-space cleanup must be a separate, explicit user action after reviewing the
+files; the workflows never infer permission to delete from a successful run.
