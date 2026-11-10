@@ -2,7 +2,7 @@
 
 Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crackberryq/Bactomics_GeneScope).
 
-**0.1.0a17 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
+**0.1.0a18 — GeneScope alpha.** Application-driven protein characterization and traceable genomic evidence, managed through Bactologix alongside HybAs AWARE and BaSIS AWARE.
 
 ## Available now
 
@@ -18,7 +18,7 @@ Canonical repository: [crackberryq/Bactomics_GeneScope](https://github.com/crack
 
 ## Run through Bactologix
 
-Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a17` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
+Select GeneScope in **Install & update**, install the named `genescope-v0.1.0a18` compatible snapshot. First installation prepares the runner and rule environment. Register a sample folder containing `annotation/<sample_id>.faa`; optionally include `annotation/<sample_id>.evidence.csv`. Create a GeneScope draft, validate, prepare missing environments and run. Reports appear under Results & downloads.
 
 ## Snakemake structure
 
@@ -124,7 +124,9 @@ directories after publication. Failed attempts keep their partial products and
 an explicit failure receipt; they are not presented as successful results.
 
 The retention adapter is checked against Snakemake 9.6.2 and 9.27.1 and fails
-closed for unsupported versions or unsafe output ownership. It keeps incomplete
+closed for unsupported versions or unsafe output ownership. The gate reads the
+executing Snakemake runtime version, accepts Conda's `0.0.0` distribution
+placeholder, and rejects conflicting concrete package/runtime versions. It keeps incomplete
 outputs and disables automatic temporary-output deletion. It does not preserve
 unwritten in-memory state, recover files removed by older versions, or turn a
 retained failed artifact into a validated result. Export the complete output tree,

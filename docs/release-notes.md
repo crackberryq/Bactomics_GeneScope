@@ -1,3 +1,17 @@
+# GeneScope 0.1.0a18
+
+Fix the retention adapter's controller version check for native Conda installations.
+The `snakemake-minimal` 9.6.2 package can report distribution metadata version
+`0.0.0` while the executing engine correctly reports `snakemake.__version__` as
+`9.6.2`. The adapter now validates that runtime identity. Missing distribution
+metadata and the known `0.0.0` placeholder do not override a supported runtime;
+unknown runtimes and conflicting concrete versions still stop execution.
+
+Generated-data preservation from a17 remains unchanged. No search algorithms,
+thresholds or scientific interpretation changed. CI now exercises native Conda
+`snakemake-minimal=9.6.2` without replacing it with a pip Snakemake wheel, including
+retention through failure/retry, reruns, report refresh and real-DIAMOND builds.
+
 # GeneScope 0.1.0a17
 
 Generated-data preservation is a core current-branch feature, applied to both

@@ -1,0 +1,12 @@
+# CI must exercise the same native engine packaging used by Bactologix.
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.11
+  - snakemake-minimal=9.6.2
+  - biopython=1.86
+  - pyyaml=6
+  - diamond=2.1.11
+  - pip
