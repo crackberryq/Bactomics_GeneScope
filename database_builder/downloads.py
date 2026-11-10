@@ -4,12 +4,15 @@ import hashlib
 import json
 import re
 import subprocess
-import tempfile
+import sys
 import time
 import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+from micpscope.retention import retained_attempt, write_receipt
 
 VERSION = '0.1.0'
 
@@ -95,7 +98,9 @@ def build(manifest_path, output, cache, offline=False, diamond=False):
         elif offline:
             raise ValueError('Missing cached accession: ' + row['accession'])
         else:
-            data = download(row['accession'])
+            with retained_attempt(output.parent, 'download-source') as attempt:
+                data = download(row['accession'])
+                (attempt / key).write_bytes(data)
         seq = check_sequence(row, data)
         if not saved.exists():
             saved.write_bytes(data)
@@ -112,11 +117,22 @@ def build(manifest_path, output, cache, offline=False, diamond=False):
             json.loads(source.read_text())
             files[name] = source.read_bytes()
     if diamond:
-        with tempfile.TemporaryDirectory() as td:
+        with retained_attempt(output.parent, "download-index") as td:
             root = Path(td)
             (root / 'proteins.faa').write_bytes(files['proteins.faa'])
-            version = subprocess.check_output(['diamond', 'version'], text=True).strip()
-            subprocess.run(['diamond', 'makedb', '--in', str(root / 'proteins.faa'), '--db', str(root / 'proteins')], check=True)
+            with (root / 'version.stderr.log').open('wb') as stderr:
+                try:
+                    version_output = subprocess.check_output(['diamond', 'version'], text=True, stderr=stderr)
+                except subprocess.CalledProcessError as error:
+                    (root / 'diamond-version.txt').write_text(error.output or '')
+                    raise
+            (root / 'diamond-version.txt').write_text(version_output)
+            version = version_output.strip()
+            command = ['diamond', 'makedb', '--in', str(root / 'proteins.faa'), '--db', str(root / 'proteins'),
+                       '--tmpdir', str(root), '--no-unlink']
+            write_receipt(root / 'command.json', {'argv': command})
+            with (root / 'stdout.log').open('wb') as stdout, (root / 'stderr.log').open('wb') as stderr:
+                subprocess.run(command, check=True, stdout=stdout, stderr=stderr, cwd=root)
             files['proteins.dmnd'] = (root / 'proteins.dmnd').read_bytes()
             files['index.json'] = encoded({'tool': version, 'input_sha256': digest(files['proteins.faa'])})
     files['SHA256SUMS'] = ''.join(f'{digest(data)}  {name}\n' for name, data in sorted(files.items())).encode()

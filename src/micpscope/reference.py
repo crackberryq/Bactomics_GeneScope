@@ -5,7 +5,7 @@ import json
 import math
 from pathlib import Path
 import subprocess
-import tempfile
+from .retention import retained_attempt, publish, write_receipt
 
 
 def digest(path):
@@ -66,18 +66,30 @@ def search(proteins, database, output, threads=1, expected=None,
         queries[pid] = {'status': 'no_qualifying_hit' if supported else 'skipped_unsupported_residues', 'hits': []}
         if supported:
             valid['q' + str(number)] = (pid, sequence)
-    version = subprocess.check_output(['diamond', 'version'], text=True).strip()
-    with tempfile.TemporaryDirectory(prefix='micpscope-search-') as temporary:
+    with retained_attempt(output.parent, 'reference-search') as temporary:
+        with (temporary / 'version.stderr.log').open('wb') as stderr:
+            try:
+                version_output = subprocess.check_output(['diamond', 'version'], text=True, stderr=stderr)
+            except subprocess.CalledProcessError as error:
+                (temporary / 'diamond-version.txt').write_text(error.output or '')
+                raise
+        (temporary / 'diamond-version.txt').write_text(version_output)
+        version = version_output.strip()
         query = Path(temporary) / 'queries.faa'
         hits = Path(temporary) / 'hits.tsv'
+        native_tmp = temporary / 'native-tmp'
+        native_tmp.mkdir()
         query.write_text(''.join('>' + key + '\n' + value[1] + '\n' for key, value in valid.items()))
         command = ['diamond', 'blastp', '--db', str(Path(database).resolve() / 'proteins.dmnd'),
                    '--query', str(query), '--out', str(hits), '--threads', str(threads),
+                   '--tmpdir', str(native_tmp), '--no-unlink',
                    '--very-sensitive', '--max-target-seqs', '0', '--max-hsps', '1',
                    '--evalue', str(evalue), '--outfmt', '6', 'qseqid', 'sseqid', 'pident',
                    'qstart', 'qend', 'sstart', 'send', 'qlen', 'slen', 'evalue', 'bitscore']
+        write_receipt(temporary / 'command.json', {'argv': command, 'input_sha256': input_hash, 'database_sha256': db_hash})
         if valid:
-            subprocess.run(command, check=True)
+            with (temporary / 'stdout.log').open('wb') as stdout, (temporary / 'stderr.log').open('wb') as stderr:
+                subprocess.run(command, check=True, stdout=stdout, stderr=stderr, cwd=temporary)
             for line in hits.read_text().splitlines():
                 q, subject, ident, qa, qb, sa, sb, qlen, slen, ev, bits = line.split('\t')
                 if q not in valid or subject not in refs:
@@ -92,30 +104,34 @@ def search(proteins, database, output, threads=1, expected=None,
                         query_coverage=qcov, reference_coverage=scov, evalue=ev, bitscore=bits,
                         query_start=int(qa), query_end=int(qb), reference_start=int(sa), reference_end=int(sb)))
         raw_hits = hits.read_text() if valid else ''
-    for row in queries.values():
-        row['hits'].sort(key=lambda h: (-h['bitscore'], h['evalue'], h['reference_id']))
-        if row['hits']:
-            best = row['hits'][0]['bitscore']
-            near = [refs[h['reference_id']] for h in row['hits'] if h['bitscore'] >= best * .95]
-            labels = {(r.get('gene', ''), r.get('protein_name', r['id'])) for r in near}
-            row['status'] = 'ambiguous_candidates' if len(labels) > 1 else 'reference_candidate'
-    verify_database(database, db_hash)
-    if digest(proteins) != input_hash:
-        raise ValueError('Protein input changed during reference search')
-    annotations = spec.get('annotations', {})
-    literature = annotations.get('literature_records', []) if isinstance(annotations, dict) else []
-    result = dict(schema_version='1.0', input_sha256=input_hash, queries=queries,
-        application=application(spec), knowledge_catalog=catalog(spec),
-        database=dict(**application(spec), checksums_sha256=db_hash,
-                      manifest_sha256=digest(Path(database) / 'reference-manifest.json')),
-        tool_version=version, command=command, thresholds=dict(identity=identity, query_coverage=coverage,
-        reference_coverage=coverage, evalue=evalue, ambiguity_bitscore_fraction=.95),
-        references=refs, literature_records=literature,
-        bibliography=spec.get('references', []),
-        interpretation='Similarity candidates only. Search filters are not validated functional cutoffs. No qualifying hit does not establish biological absence.')
-    output.with_suffix('.hits.tsv').write_text(raw_hits)
-    output.write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
-    return result
+        if not valid:
+            hits.write_text('')
+        for row in queries.values():
+            row['hits'].sort(key=lambda h: (-h['bitscore'], h['evalue'], h['reference_id']))
+            if row['hits']:
+                best = row['hits'][0]['bitscore']
+                near = [refs[h['reference_id']] for h in row['hits'] if h['bitscore'] >= best * .95]
+                labels = {(r.get('gene', ''), r.get('protein_name', r['id'])) for r in near}
+                row['status'] = 'ambiguous_candidates' if len(labels) > 1 else 'reference_candidate'
+        verify_database(database, db_hash)
+        if digest(proteins) != input_hash:
+            raise ValueError('Protein input changed during reference search')
+        annotations = spec.get('annotations', {})
+        literature = annotations.get('literature_records', []) if isinstance(annotations, dict) else []
+        result = dict(schema_version='1.0', input_sha256=input_hash, queries=queries,
+            application=application(spec), knowledge_catalog=catalog(spec),
+            database=dict(**application(spec), checksums_sha256=db_hash,
+                          manifest_sha256=digest(Path(database) / 'reference-manifest.json')),
+            tool_version=version, command=command, thresholds=dict(identity=identity, query_coverage=coverage,
+            reference_coverage=coverage, evalue=evalue, ambiguity_bitscore_fraction=.95),
+            references=refs, literature_records=literature,
+            bibliography=spec.get('references', []),
+            interpretation='Similarity candidates only. Search filters are not validated functional cutoffs. No qualifying hit does not establish biological absence.')
+        generated = temporary / 'reference-search.json'
+        generated.write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
+        publish(hits, output.with_suffix('.hits.tsv'))
+        publish(generated, output)
+        return result
 
 
 def attach(proteins, path, input_sha256):

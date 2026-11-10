@@ -2,6 +2,7 @@
 import sys
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "src"))
 from micpscope.application import application, archive_name, catalog
+from micpscope.retention import retained_attempt, publish
 import argparse
 import hashlib
 import json
@@ -38,7 +39,7 @@ def fasta(path):
     return result
 
 
-def validate(spec_path, output):
+def _validate(spec_path, output):
     spec_path = Path(spec_path).resolve()
     s = yaml.safe_load(spec_path.read_text())
     if not isinstance(s, dict):
@@ -86,7 +87,7 @@ def validate(spec_path, output):
     write(output, {'spec':s,'input_sha256':assets,'spec_sha256':sha(spec_path.read_bytes()),'coordinate_system':'1-based-inclusive'})
 
 
-def retrieve(plan_path, outdir):
+def _retrieve(plan_path, outdir):
     plan=json.loads(Path(plan_path).read_text()); s=plan['spec']; out=Path(outdir); out.mkdir(parents=True,exist_ok=True)
     for path,digest in plan['input_sha256'].items():
         if sha(Path(path).read_bytes()) != digest: raise ValueError('Input changed after validation: '+path)
@@ -97,8 +98,9 @@ def retrieve(plan_path, outdir):
             if not re.fullmatch('[ACDEFGHIKLMNPQRSTVWYUBZOX]+',seq): raise ValueError('Invalid protein alphabet')
             if row.get('sequence_sha256') and sha(seq.encode())!=row['sequence_sha256']: raise ValueError('Protein checksum mismatch')
         else:
-            raw=download(row['accession']); seq=check_sequence(row,raw)
+            raw=download(row['accession'])
             (out/(row['id']+'.source.json')).write_bytes(raw)
+            seq=check_sequence(row,raw)
         proteins.append('>'+row['id']+'\n'+seq+'\n')
         provenance.append({'id':row['id'],'sequence_sha256':sha(seq.encode()),'length':len(seq)})
     for row in s.get('regulatory',[]):
@@ -111,7 +113,7 @@ def retrieve(plan_path, outdir):
     write(out/'sequence-provenance.json',provenance)
 
 
-def package(plan_path, seqdir, index, output):
+def _package(plan_path, seqdir, index, output):
     plan=json.loads(Path(plan_path).read_text()); out=Path(output); out.mkdir(parents=True,exist_ok=True)
     for p in Path(seqdir).iterdir():
         if p.is_file(): shutil.copyfile(p,out/p.name)
@@ -129,7 +131,7 @@ def package(plan_path, seqdir, index, output):
     shutil.copyfile(out/archive,out/'database.zip')
 
 
-def verify(root, receipt):
+def _verify(root, receipt):
     root=Path(root); hashes=json.loads((root/'checksums.json').read_text())
     for name,digest in hashes.items():
         if Path(name).name!=name or sha((root/name).read_bytes())!=digest: raise ValueError('Database checksum mismatch')
@@ -145,6 +147,40 @@ def verify(root, receipt):
             if sha(z.read(name))!=digest: raise ValueError('Package checksum mismatch')
         if z.read('checksums.json')!=(root/'checksums.json').read_bytes(): raise ValueError('Package manifest mismatch')
     write(receipt,{'status':'completed','schema_version':'1.0','checksums_sha256':sha((root/'checksums.json').read_bytes()),'archive_sha256':sha(archive.read_bytes()),'archive_name':archive.name,'application':application(spec)})
+
+
+def validate(spec_path, output):
+    output = Path(output)
+    with retained_attempt(output.parent, "validate") as attempt:
+        (attempt / "product").mkdir()
+        generated = attempt / "product" / output.name
+        _validate(spec_path, generated)
+        publish(generated, output)
+
+
+def retrieve(plan_path, outdir):
+    outdir = Path(outdir)
+    with retained_attempt(outdir.parent, "retrieve") as attempt:
+        generated = attempt / "sequences"
+        _retrieve(plan_path, generated)
+        publish(generated, outdir)
+
+
+def package(plan_path, seqdir, index, output):
+    output = Path(output)
+    with retained_attempt(output.parent, "package") as attempt:
+        generated = attempt / "database"
+        _package(plan_path, seqdir, index, generated)
+        publish(generated, output)
+
+
+def verify(root, receipt):
+    receipt = Path(receipt)
+    with retained_attempt(receipt.parent, "verify") as attempt:
+        (attempt / "product").mkdir()
+        generated = attempt / "product" / receipt.name
+        _verify(root, generated)
+        publish(generated, receipt)
 
 
 if __name__=='__main__':
