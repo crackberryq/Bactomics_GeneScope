@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: Please cite this software and the version used when reporting research that used GeneScope.
+type: software
+title: GeneScope
+authors:
+  - family-names: Goldstein
+    given-names: Jimi
+    orcid: https://orcid.org/0000-0002-7829-0090
+version: 0.1.0a18
+repository-code: https://github.com/crackberryq/Bactomics_GeneScope
+license-url: https://github.com/crackberryq/Bactomics_GeneScope/blob/licensing/genescope-v0.1.0a18-research-v1/LICENSE
