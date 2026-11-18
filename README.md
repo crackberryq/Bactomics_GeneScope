@@ -71,9 +71,7 @@ Biopython 1.86 `ProteinAnalysis` provides standard descriptors. Aliphatic index 
 python -m unittest discover -s tests -v
 ```
 
-## Licence and citation
-
-The [Noncommercial Research Software Licence](LICENSE) permits noncommercial research and requires prior written permission from Jimi Goldstein for commercial use. When reporting research that used GeneScope, cite Jimi Goldstein and the software version used. [Citation details](CITATION.cff)
+No license has yet been selected by the repository owner.
 
 ## Literature catalog and annotation
 
